@@ -1,0 +1,130 @@
+/* ==========================================
+   PriviLens X - Website History
+========================================== */
+
+*{
+
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Inter",sans-serif;
+
+}
+
+body{
+
+    background:#f5f7fb;
+    color:#1f2937;
+    padding:40px;
+
+}
+
+.container{
+
+    max-width:1200px;
+    margin:auto;
+
+}
+
+h1{
+
+    font-size:34px;
+    font-weight:700;
+    color:#2563eb;
+    margin-bottom:10px;
+
+}
+
+.container p{
+
+    color:#6b7280;
+    margin-bottom:35px;
+
+}
+
+/* ===================================== */
+
+#historyContainer{
+
+    display:grid;
+
+    grid-template-columns:
+    repeat(auto-fill,minmax(340px,1fr));
+
+    gap:25px;
+
+}
+
+/* ===================================== */
+
+.history-card{
+
+    background:white;
+
+    border-radius:18px;
+
+    padding:25px;
+
+    box-shadow:
+    0 10px 30px rgba(0,0,0,.08);
+
+    transition:.3s;
+
+    border:1px solid #e5e7eb;
+
+}
+
+.history-card:hover{
+
+    transform:translateY(-6px);
+
+    box-shadow:
+    0 20px 45px rgba(37,99,235,.15);
+
+}
+
+/* ===================================== */
+
+.history-card h2{
+
+    color:#2563eb;
+
+    margin-bottom:18px;
+
+    font-size:22px;
+
+}
+
+.history-card p{
+
+    margin:12px 0;
+
+    color:#374151;
+
+    line-height:1.5;
+
+}
+
+.history-card strong{
+
+    color:#111827;
+
+}
+
+/* ===================================== */
+
+@media(max-width:700px){
+
+    body{
+
+        padding:20px;
+
+    }
+
+    h1{
+
+        font-size:28px;
+
+    }
+
+}

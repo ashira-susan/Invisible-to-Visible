@@ -1,0 +1,546 @@
+/* =========================================
+   GLOBAL
+========================================= */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+
+    background:#f4f7fb;
+
+    color:#2d3748;
+
+    overflow:hidden;
+
+}
+
+/* =========================================
+   LAYOUT
+========================================= */
+
+.main-container{
+
+    display:flex;
+
+    width:100%;
+
+    height:100vh;
+
+}
+
+/* =========================================
+   SIDEBAR
+========================================= */
+
+.sidebar{
+
+    width:270px;
+
+    background:#ffffff;
+
+    border-right:1px solid #e5e7eb;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:space-between;
+
+    padding:30px 20px;
+
+}
+
+.logo-area{
+
+    text-align:center;
+
+}
+
+.logo-circle{
+
+    width:75px;
+
+    height:75px;
+
+    margin:auto;
+
+    border-radius:50%;
+
+    background:#2563eb;
+
+    color:white;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-size:30px;
+
+    margin-bottom:15px;
+
+}
+
+.logo-area h2{
+
+    font-size:28px;
+
+    font-weight:700;
+
+}
+
+.logo-area p{
+
+    color:#64748b;
+
+    margin-top:5px;
+
+}
+
+/* =========================================
+   MENU
+========================================= */
+
+.menu{
+
+    margin-top:40px;
+
+}
+
+.menu-btn{
+
+    width:100%;
+
+    border:none;
+
+    background:white;
+
+    padding:15px;
+
+    margin-bottom:12px;
+
+    border-radius:12px;
+
+    text-align:left;
+
+    font-size:16px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+.menu-btn i{
+
+    width:30px;
+
+}
+
+.menu-btn:hover{
+
+    background:#eff6ff;
+
+}
+
+.active{
+
+    background:#2563eb;
+
+    color:white;
+
+}
+
+/* =========================================
+   FOOTER
+========================================= */
+
+.bottom-info{
+
+    background:#eff6ff;
+
+    padding:15px;
+
+    border-radius:12px;
+
+    text-align:center;
+
+}
+
+/* =========================================
+   CHAT SECTION
+========================================= */
+
+.chat-section{
+
+    flex:1;
+
+    display:flex;
+
+    flex-direction:column;
+
+    padding:30px;
+
+}
+
+/* =========================================
+   HEADER
+========================================= */
+
+.chat-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+}
+
+.chat-header h1{
+
+    font-size:30px;
+
+}
+
+.chat-header p{
+
+    color:#64748b;
+
+    margin-top:5px;
+
+}
+
+#clearChat{
+
+    background:#ef4444;
+
+    color:white;
+
+    border:none;
+
+    padding:12px 20px;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+#clearChat:hover{
+
+    background:#dc2626;
+
+}
+
+/* =========================================
+   CHAT BOX
+========================================= */
+
+.chat-box{
+
+    flex:1;
+
+    overflow-y:auto;
+
+    margin-top:30px;
+
+    margin-bottom:20px;
+
+    padding-right:10px;
+
+}
+
+/* =========================================
+   MESSAGE
+========================================= */
+
+.message{
+
+    display:flex;
+
+    margin-bottom:20px;
+
+}
+
+.avatar{
+
+    width:50px;
+
+    height:50px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:24px;
+
+    margin-right:15px;
+
+}
+
+.ai{
+
+    background:#2563eb;
+
+    color:white;
+
+}
+
+.user{
+
+    background:#10b981;
+
+    color:white;
+
+}
+
+.bubble{
+
+    background:white;
+
+    padding:18px;
+
+    border-radius:16px;
+
+    max-width:700px;
+
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+
+}
+
+.bubble h3{
+
+    margin-bottom:10px;
+
+}
+
+/* =========================================
+   SUGGESTIONS
+========================================= */
+
+.suggestions{
+
+    display:flex;
+
+    gap:12px;
+
+    flex-wrap:wrap;
+
+    margin-bottom:20px;
+
+}
+
+.suggestion{
+
+    border:none;
+
+    background:white;
+
+    padding:12px 18px;
+
+    border-radius:30px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+    box-shadow:0 4px 12px rgba(0,0,0,.06);
+
+}
+
+.suggestion:hover{
+
+    background:#2563eb;
+
+    color:white;
+
+}
+
+/* =========================================
+   INPUT
+========================================= */
+
+.input-area{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+}
+
+textarea{
+
+    flex:1;
+
+    resize:none;
+
+    border:none;
+
+    border-radius:15px;
+
+    padding:18px;
+
+    font-size:16px;
+
+    background:white;
+
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+
+}
+
+textarea:focus{
+
+    outline:none;
+
+}
+
+#sendButton{
+
+    width:60px;
+
+    height:60px;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:#2563eb;
+
+    color:white;
+
+    font-size:22px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+#sendButton:hover{
+
+    transform:scale(1.08);
+
+}
+
+/* =========================================
+   RIGHT PANEL
+========================================= */
+
+.right-panel{
+
+    width:320px;
+
+    background:white;
+
+    border-left:1px solid #e5e7eb;
+
+    padding:30px;
+
+}
+
+.right-panel h2{
+
+    margin-bottom:25px;
+
+}
+
+/* =========================================
+   WEBSITE CARD
+========================================= */
+
+.website-card{
+
+    background:#2563eb;
+
+    color:white;
+
+    padding:25px;
+
+    border-radius:20px;
+
+    text-align:center;
+
+    margin-bottom:30px;
+
+}
+
+.website-card h1{
+
+    font-size:60px;
+
+    margin-top:10px;
+
+}
+
+/* =========================================
+   INFO CARD
+========================================= */
+
+.quick-info{
+
+    display:grid;
+
+    gap:15px;
+
+}
+
+.info-card{
+
+    background:#f8fafc;
+
+    padding:18px;
+
+    border-radius:15px;
+
+    box-shadow:0 3px 10px rgba(0,0,0,.05);
+
+}
+
+.info-card h4{
+
+    color:#64748b;
+
+    margin-bottom:6px;
+
+}
+
+.info-card p{
+
+    font-size:22px;
+
+    font-weight:600;
+
+}
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#cbd5e1;
+
+    border-radius:20px;
+
+}

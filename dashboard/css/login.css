@@ -1,0 +1,1316 @@
+/* ================================================= */
+/* PriviLens X - Login */
+/* ================================================= */
+
+*{
+
+    margin:0;
+
+    padding:0;
+
+    box-sizing:border-box;
+
+}
+
+:root{
+
+    --bg:#050816;
+
+    --bg2:#081126;
+
+    --primary:#22d3ee;
+
+    --secondary:#2563eb;
+
+    --accent:#7c3aed;
+
+    --white:#ffffff;
+
+    --text:#dbeafe;
+
+    --glass:rgba(255,255,255,.08);
+
+    --glassBorder:rgba(255,255,255,.15);
+
+    --shadow:0 25px 60px rgba(0,0,0,.45);
+
+}
+
+html{
+
+    scroll-behavior:smooth;
+
+}
+
+body{
+
+    font-family:'Inter',sans-serif;
+
+    background:var(--bg);
+
+    color:var(--white);
+
+    overflow-x:hidden;
+
+    min-height:100vh;
+
+    position:relative;
+
+}
+
+/* ================================================= */
+/* BACKGROUND */
+/* ================================================= */
+
+.background{
+
+    position:fixed;
+
+    inset:0;
+
+    overflow:hidden;
+
+    z-index:-5;
+
+}
+
+/* ================================================= */
+/* GRADIENTS */
+/* ================================================= */
+
+.gradient{
+
+    position:absolute;
+
+    border-radius:50%;
+
+    filter:blur(120px);
+
+    animation:floatGlow 12s ease-in-out infinite;
+
+}
+
+.gradient1{
+
+    width:520px;
+
+    height:520px;
+
+    background:#22d3ee;
+
+    top:-180px;
+
+    left:-150px;
+
+    opacity:.22;
+
+}
+
+.gradient2{
+
+    width:620px;
+
+    height:620px;
+
+    background:#7c3aed;
+
+    bottom:-250px;
+
+    right:-180px;
+
+    opacity:.18;
+
+    animation-delay:4s;
+
+}
+
+.gradient3{
+
+    width:420px;
+
+    height:420px;
+
+    background:#2563eb;
+
+    top:35%;
+
+    left:45%;
+
+    opacity:.15;
+
+    animation-delay:7s;
+
+}
+
+/* ================================================= */
+/* CYBER GRID */
+/* ================================================= */
+
+.grid{
+
+    position:absolute;
+
+    inset:0;
+
+    background-image:
+
+        linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
+
+        linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+
+    background-size:60px 60px;
+
+    animation:gridMove 18s linear infinite;
+
+}
+
+/* ================================================= */
+/* MAIN LAYOUT */
+/* ================================================= */
+
+.loginContainer{
+
+    width:100%;
+
+    min-height:100vh;
+
+    display:grid;
+
+    grid-template-columns:1.1fr .9fr;
+
+    align-items:center;
+
+    gap:70px;
+
+    padding:120px 7% 60px;
+
+}
+
+/* ================================================= */
+/* ANIMATIONS */
+/* ================================================= */
+
+@keyframes floatGlow{
+
+    0%,100%{
+
+        transform:translate(0,0);
+
+    }
+
+    50%{
+
+        transform:translate(30px,-40px);
+
+    }
+
+}
+
+@keyframes gridMove{
+
+    from{
+
+        transform:translateY(0);
+
+    }
+
+    to{
+
+        transform:translateY(60px);
+
+    }
+
+}/* ================================================= */
+/* NAVBAR */
+/* ================================================= */
+
+.navbar{
+
+    position:fixed;
+
+    top:20px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    width:92%;
+
+    max-width:1450px;
+
+    padding:18px 40px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    background:rgba(255,255,255,.05);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid rgba(255,255,255,.12);
+
+    border-radius:22px;
+
+    box-shadow:var(--shadow);
+
+    z-index:999;
+
+}
+
+.logo{
+
+    text-decoration:none;
+
+    color:white;
+
+    font-size:1.8rem;
+
+    font-weight:800;
+
+    transition:.35s;
+
+}
+
+.logo span{
+
+    color:var(--primary);
+
+}
+
+.logo:hover{
+
+    transform:scale(1.05);
+
+    text-shadow:0 0 18px rgba(34,211,238,.7);
+
+}
+
+.signupLink{
+
+    text-decoration:none;
+
+    color:white;
+
+    padding:12px 26px;
+
+    border-radius:50px;
+
+    border:1px solid rgba(255,255,255,.15);
+
+    transition:.35s;
+
+}
+
+.signupLink:hover{
+
+    background:rgba(34,211,238,.15);
+
+    border-color:var(--primary);
+
+}
+
+/* ================================================= */
+/* LEFT PANEL */
+/* ================================================= */
+
+.leftPanel{
+
+    position:relative;
+
+}
+
+.statusBadge{
+
+    display:inline-block;
+
+    padding:10px 22px;
+
+    border-radius:40px;
+
+    background:rgba(34,211,238,.12);
+
+    border:1px solid rgba(34,211,238,.3);
+
+    color:#67e8f9;
+
+    font-size:.82rem;
+
+    letter-spacing:1.5px;
+
+    margin-bottom:30px;
+
+}
+
+.leftPanel h1{
+
+    font-size:4rem;
+
+    line-height:1.1;
+
+    margin-bottom:25px;
+
+}
+
+.leftPanel h1 span{
+
+    color:var(--primary);
+
+    text-shadow:0 0 18px rgba(34,211,238,.6);
+
+}
+
+.heroText{
+
+    max-width:620px;
+
+    color:#cbd5e1;
+
+    line-height:1.9;
+
+    margin-bottom:45px;
+
+}
+
+/* ================================================= */
+/* SECURITY PANEL */
+/* ================================================= */
+
+.securityPanel{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:18px;
+
+    margin-bottom:50px;
+
+}
+
+.statusItem{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+    padding:18px 22px;
+
+    background:rgba(255,255,255,.06);
+
+    border-radius:18px;
+
+    backdrop-filter:blur(20px);
+
+    border:1px solid rgba(255,255,255,.12);
+
+    transition:.35s;
+
+}
+
+.statusItem:hover{
+
+    transform:translateX(10px);
+
+    border-color:var(--primary);
+
+}
+
+.statusDot{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    background:#22c55e;
+
+    box-shadow:
+
+        0 0 12px #22c55e,
+
+        0 0 25px #22c55e;
+
+}
+
+.statusItem p{
+
+    color:#dbeafe;
+
+}
+
+/* ================================================= */
+/* AI SHIELD */
+/* ================================================= */
+
+.shieldContainer{
+
+    position:relative;
+
+    width:330px;
+
+    height:330px;
+
+    margin-top:25px;
+
+}
+
+.shieldCore{
+
+    position:absolute;
+
+    top:50%;
+
+    left:50%;
+
+    transform:translate(-50%,-50%);
+
+    width:130px;
+
+    height:130px;
+
+    border-radius:50%;
+
+    background:
+
+        radial-gradient(circle,#22d3ee,#2563eb);
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:3rem;
+
+    box-shadow:
+
+        0 0 45px rgba(34,211,238,.7),
+
+        0 0 80px rgba(59,130,246,.4);
+
+    animation:pulseShield 3s infinite;
+
+}
+
+.radar{
+
+    position:absolute;
+
+    top:50%;
+
+    left:50%;
+
+    transform:translate(-50%,-50%);
+
+    border-radius:50%;
+
+    border:1px solid rgba(34,211,238,.25);
+
+}
+
+.radar1{
+
+    width:170px;
+
+    height:170px;
+
+    animation:rotateRadar 10s linear infinite;
+
+}
+
+.radar2{
+
+    width:240px;
+
+    height:240px;
+
+    animation:rotateRadarReverse 15s linear infinite;
+
+}
+
+.radar3{
+
+    width:310px;
+
+    height:310px;
+
+    animation:rotateRadar 20s linear infinite;
+
+}
+
+.scanLine{
+
+    position:absolute;
+
+    top:50%;
+
+    left:50%;
+
+    width:2px;
+
+    height:155px;
+
+    background:linear-gradient(
+
+        transparent,
+
+        #22d3ee,
+
+        transparent
+
+    );
+
+    transform-origin:bottom;
+
+    animation:scanner 4s linear infinite;
+
+}
+
+/* ================================================= */
+/* ANIMATIONS */
+/* ================================================= */
+
+@keyframes pulseShield{
+
+    0%,100%{
+
+        transform:translate(-50%,-50%) scale(1);
+
+    }
+
+    50%{
+
+        transform:translate(-50%,-50%) scale(1.08);
+
+    }
+
+}
+
+@keyframes rotateRadar{
+
+    from{
+
+        transform:translate(-50%,-50%) rotate(0deg);
+
+    }
+
+    to{
+
+        transform:translate(-50%,-50%) rotate(360deg);
+
+    }
+
+}
+
+@keyframes rotateRadarReverse{
+
+    from{
+
+        transform:translate(-50%,-50%) rotate(360deg);
+
+    }
+
+    to{
+
+        transform:translate(-50%,-50%) rotate(0deg);
+
+    }
+
+}
+
+@keyframes scanner{
+
+    from{
+
+        transform:translate(-50%,-100%) rotate(0deg);
+
+    }
+
+    to{
+
+        transform:translate(-50%,-100%) rotate(360deg);
+
+    }
+
+}/* ================================================= */
+/* RIGHT PANEL */
+/* ================================================= */
+
+.rightPanel{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    position:relative;
+
+}
+
+/* ================================================= */
+/* LOGIN CARD */
+/* ================================================= */
+
+.loginCard{
+
+    position:relative;
+
+    width:100%;
+
+    max-width:520px;
+
+    padding:55px;
+
+    border-radius:32px;
+
+    overflow:hidden;
+
+    background:rgba(255,255,255,.06);
+
+    backdrop-filter:blur(35px);
+
+    border:1px solid rgba(255,255,255,.12);
+
+    box-shadow:var(--shadow);
+
+    transition:.4s;
+
+}
+
+.loginCard:hover{
+
+    transform:translateY(-8px);
+
+    box-shadow:
+
+        0 35px 90px rgba(34,211,238,.18);
+
+}
+
+/* ================================================= */
+
+.cardGlow{
+
+    position:absolute;
+
+    width:260px;
+
+    height:260px;
+
+    background:radial-gradient(circle,
+
+        rgba(34,211,238,.30),
+
+        transparent 70%
+
+    );
+
+    top:-120px;
+
+    right:-100px;
+
+    filter:blur(35px);
+
+    animation:cardGlow 8s infinite ease-in-out;
+
+}
+
+@keyframes cardGlow{
+
+    0%,100%{
+
+        transform:translate(0,0);
+
+    }
+
+    50%{
+
+        transform:translate(-30px,30px);
+
+    }
+
+}
+
+/* ================================================= */
+
+.loginCard h2{
+
+    font-size:2.3rem;
+
+    margin-bottom:12px;
+
+}
+
+.cardSubtitle{
+
+    color:#cbd5e1;
+
+    line-height:1.7;
+
+    margin-bottom:35px;
+
+}
+
+/* ================================================= */
+/* INPUTS */
+/* ================================================= */
+
+.inputGroup{
+
+    display:flex;
+
+    flex-direction:column;
+
+    margin-bottom:22px;
+
+}
+
+.inputGroup label{
+
+    color:#dbeafe;
+
+    margin-bottom:10px;
+
+    font-size:.95rem;
+
+}
+
+.inputGroup input{
+
+    width:100%;
+
+    padding:17px 20px;
+
+    border:none;
+
+    outline:none;
+
+    border-radius:16px;
+
+    background:rgba(255,255,255,.07);
+
+    color:white;
+
+    border:1px solid transparent;
+
+    transition:.35s;
+
+    font-size:1rem;
+
+}
+
+.inputGroup input::placeholder{
+
+    color:#94a3b8;
+
+}
+
+.inputGroup input:focus{
+
+    border-color:#22d3ee;
+
+    box-shadow:
+
+        0 0 20px rgba(34,211,238,.25);
+
+}
+
+/* ================================================= */
+
+.passwordBox{
+
+    position:relative;
+
+}
+
+.passwordBox input{
+
+    padding-right:60px;
+
+}
+
+.togglePassword{
+
+    position:absolute;
+
+    right:18px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+    background:none;
+
+    border:none;
+
+    color:#94a3b8;
+
+    cursor:pointer;
+
+    font-size:1.1rem;
+
+    transition:.3s;
+
+}
+
+.togglePassword:hover{
+
+    color:#22d3ee;
+
+}
+
+/* ================================================= */
+/* OPTIONS */
+/* ================================================= */
+
+.loginOptions{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin:25px 0;
+
+}
+
+.rememberMe{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    color:#cbd5e1;
+
+    cursor:pointer;
+
+}
+
+.forgotPassword{
+
+    color:#22d3ee;
+
+    text-decoration:none;
+
+}
+
+.forgotPassword:hover{
+
+    text-shadow:0 0 12px rgba(34,211,238,.8);
+
+}
+
+/* ================================================= */
+/* LOGIN BUTTON */
+/* ================================================= */
+
+.loginButton{
+
+    width:100%;
+
+    padding:18px;
+
+    border:none;
+
+    border-radius:18px;
+
+    cursor:pointer;
+
+    color:white;
+
+    font-size:1rem;
+
+    font-weight:700;
+
+    background:
+
+        linear-gradient(135deg,
+
+        #22d3ee,
+
+        #2563eb);
+
+    transition:.35s;
+
+}
+
+.loginButton:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:
+
+        0 15px 40px rgba(34,211,238,.35);
+
+}
+
+/* ================================================= */
+/* DIVIDER */
+/* ================================================= */
+
+.divider{
+
+    display:flex;
+
+    align-items:center;
+
+    margin:35px 0;
+
+}
+
+.divider::before,
+
+.divider::after{
+
+    content:"";
+
+    flex:1;
+
+    height:1px;
+
+    background:rgba(255,255,255,.12);
+
+}
+
+.divider span{
+
+    padding:0 15px;
+
+    color:#94a3b8;
+
+}
+
+/* ================================================= */
+/* SOCIAL BUTTONS */
+/* ================================================= */
+
+.socialButtons{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:18px;
+
+}
+
+.socialButtons button{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:15px;
+
+    border:none;
+
+    border-radius:16px;
+
+    background:rgba(255,255,255,.08);
+
+    color:white;
+
+    cursor:pointer;
+
+    transition:.35s;
+
+}
+
+.socialButtons button:hover{
+
+    transform:translateY(-5px);
+
+    background:rgba(34,211,238,.12);
+
+}
+
+/* ================================================= */
+
+.signupText{
+
+    text-align:center;
+
+    margin-top:35px;
+
+    color:#94a3b8;
+
+}
+
+.signupText a{
+
+    color:#22d3ee;
+
+    text-decoration:none;
+
+    font-weight:700;
+
+}
+
+.signupText a:hover{
+
+    text-shadow:0 0 12px rgba(34,211,238,.8);
+
+}/* ================================================= */
+/* MOUSE GLOW */
+/* ================================================= */
+
+.mouseGlow{
+
+    position:fixed;
+
+    width:320px;
+
+    height:320px;
+
+    border-radius:50%;
+
+    pointer-events:none;
+
+    background:radial-gradient(circle,
+        rgba(34,211,238,.18),
+        transparent 70%);
+
+    filter:blur(40px);
+
+    transform:translate(-50%,-50%);
+
+    z-index:-2;
+
+    transition:
+        left .08s linear,
+        top .08s linear;
+
+}
+
+/* ================================================= */
+/* FLOATING PARTICLES */
+/* ================================================= */
+
+.floatingParticles{
+
+    position:fixed;
+
+    inset:0;
+
+    overflow:hidden;
+
+    pointer-events:none;
+
+    z-index:-1;
+
+}
+
+.floatingParticles span{
+
+    position:absolute;
+
+    width:7px;
+
+    height:7px;
+
+    border-radius:50%;
+
+    background:#22d3ee;
+
+    box-shadow:0 0 18px #22d3ee;
+
+    animation:particles linear infinite;
+
+}
+
+.floatingParticles span:nth-child(1){left:8%;animation-duration:12s;}
+.floatingParticles span:nth-child(2){left:20%;animation-duration:16s;}
+.floatingParticles span:nth-child(3){left:35%;animation-duration:14s;}
+.floatingParticles span:nth-child(4){left:48%;animation-duration:18s;}
+.floatingParticles span:nth-child(5){left:63%;animation-duration:13s;}
+.floatingParticles span:nth-child(6){left:76%;animation-duration:17s;}
+.floatingParticles span:nth-child(7){left:88%;animation-duration:15s;}
+.floatingParticles span:nth-child(8){left:95%;animation-duration:20s;}
+
+@keyframes particles{
+
+    from{
+
+        transform:translateY(110vh);
+
+        opacity:0;
+
+    }
+
+    20%{
+
+        opacity:1;
+
+    }
+
+    80%{
+
+        opacity:1;
+
+    }
+
+    to{
+
+        transform:translateY(-120px);
+
+        opacity:0;
+
+    }
+
+}
+
+/* ================================================= */
+/* PAGE LOADER */
+/* ================================================= */
+
+.pageLoader{
+
+    position:fixed;
+
+    inset:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:25px;
+
+    background:#050816;
+
+    z-index:99999;
+
+    animation:loaderHide 1s forwards;
+
+    animation-delay:1.5s;
+
+}
+
+.loaderRing{
+
+    width:90px;
+
+    height:90px;
+
+    border-radius:50%;
+
+    border:4px solid rgba(255,255,255,.08);
+
+    border-top:4px solid #22d3ee;
+
+    animation:spin 1s linear infinite;
+
+}
+
+.pageLoader h2{
+
+    color:#22d3ee;
+
+    letter-spacing:2px;
+
+    font-size:1rem;
+
+}
+
+@keyframes spin{
+
+    to{
+
+        transform:rotate(360deg);
+
+    }
+
+}
+
+@keyframes loaderHide{
+
+    to{
+
+        opacity:0;
+
+        visibility:hidden;
+
+    }
+
+}
+
+/* ================================================= */
+/* RESPONSIVE */
+/* ================================================= */
+
+@media(max-width:1100px){
+
+    .loginContainer{
+
+        grid-template-columns:1fr;
+
+        gap:70px;
+
+        text-align:center;
+
+    }
+
+    .shieldContainer{
+
+        margin:auto;
+
+    }
+
+    .securityPanel{
+
+        max-width:500px;
+
+        margin:auto;
+
+        margin-bottom:50px;
+
+    }
+
+}
+
+@media(max-width:700px){
+
+    .navbar{
+
+        width:96%;
+
+        padding:15px 20px;
+
+    }
+
+    .leftPanel h1{
+
+        font-size:2.8rem;
+
+    }
+
+    .loginCard{
+
+        padding:35px;
+
+    }
+
+    .socialButtons{
+
+        grid-template-columns:1fr;
+
+    }
+
+}

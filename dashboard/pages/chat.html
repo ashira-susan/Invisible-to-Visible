@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>PriviLens AI Assistant</title>
+
+    <link rel="stylesheet"
+      href="../css/chat.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="main-container">
+
+    <!-- ========================================= -->
+    <!-- LEFT SIDEBAR -->
+    <!-- ========================================= -->
+
+    <aside class="sidebar">
+
+        <div class="logo-area">
+
+            <div class="logo-circle">
+
+                <i class="fa-solid fa-shield-halved"></i>
+
+            </div>
+
+            <h2>PriviLens</h2>
+
+            <p>AI Privacy Assistant</p>
+
+        </div>
+
+        <div class="menu">
+
+            <button class="menu-btn active">
+
+                <i class="fa-solid fa-comments"></i>
+
+                AI Chat
+
+            </button>
+
+            <button class="menu-btn">
+
+                <i class="fa-solid fa-chart-line"></i>
+
+                Dashboard
+
+            </button>
+
+            <button class="menu-btn">
+
+                <i class="fa-solid fa-globe"></i>
+
+                Website History
+
+            </button>
+
+            <button class="menu-btn">
+
+                <i class="fa-solid fa-cookie-bite"></i>
+
+                Cookie Analysis
+
+            </button>
+
+            <button class="menu-btn">
+
+                <i class="fa-solid fa-user-shield"></i>
+
+                Privacy Score
+
+            </button>
+
+        </div>
+
+        <div class="bottom-info">
+
+            <p>
+
+                <strong>Version</strong>
+
+                <br>
+
+                PriviLens X
+
+            </p>
+
+        </div>
+
+    </aside>
+
+    <!-- ========================================= -->
+    <!-- CHAT AREA -->
+    <!-- ========================================= -->
+
+    <section class="chat-section">
+
+        <!-- Header -->
+
+        <div class="chat-header">
+
+            <div>
+
+                <h1>
+
+                    AI Privacy Assistant
+
+                </h1>
+
+                <p>
+
+                    Ask anything about the website you are visiting.
+
+                </p>
+
+            </div>
+
+            <button id="clearChat">
+
+                <i class="fa-solid fa-trash"></i>
+
+                Clear Chat
+
+            </button>
+
+        </div>
+
+        <!-- Messages -->
+
+        <div class="chat-box"
+             id="chatBox">
+
+            <!-- AI Welcome -->
+
+            <div class="message ai-message">
+
+                <div class="avatar ai">
+
+                    🤖
+
+                </div>
+
+                <div class="bubble">
+
+                    <h3>
+
+                        Welcome 👋
+
+                    </h3>
+
+                    <p>
+
+                        I am your PriviLens AI Assistant.
+
+                        Ask me anything about the website you're visiting.
+
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Suggested Questions -->
+
+        <div class="suggestions">
+
+            <button class="suggestion">
+
+                Is this website safe?
+
+            </button>
+
+            <button class="suggestion">
+
+                Explain the cookies
+
+            </button>
+
+            <button class="suggestion">
+
+                Show tracker information
+
+            </button>
+
+            <button class="suggestion">
+
+                Why is my fingerprint score high?
+
+            </button>
+
+        </div>
+
+        <!-- Input -->
+
+        <div class="input-area">
+
+            <textarea
+
+                id="question"
+
+                rows="1"
+
+                placeholder="Ask PriviLens AI anything..."></textarea>
+
+            <button id="sendButton">
+
+                <i class="fa-solid fa-paper-plane"></i>
+
+            </button>
+
+        </div>
+
+    </section>
+
+    <!-- ========================================= -->
+    <!-- RIGHT PANEL -->
+    <!-- ========================================= -->
+
+    <aside class="right-panel">
+
+        <h2>
+
+            Current Website
+
+        </h2>
+
+        <div class="website-card">
+
+            <h3 id="websiteName">
+
+                Waiting...
+
+            </h3>
+
+            <p>
+
+                Trust Score
+
+            </p>
+
+            <h1 id="trustScore">
+
+                --
+
+            </h1>
+
+        </div>
+
+        <div class="quick-info">
+
+            <div class="info-card">
+
+                <h4>
+
+                    Cookies
+
+                </h4>
+
+                <p id="cookieCount">
+
+                    --
+
+                </p>
+
+            </div>
+
+            <div class="info-card">
+
+                <h4>
+
+                    Trackers
+
+                </h4>
+
+                <p id="trackerCount">
+
+                    --
+
+                </p>
+
+            </div>
+
+            <div class="info-card">
+
+                <h4>
+
+                    HTTPS
+
+                </h4>
+
+                <p id="httpsStatus">
+
+                    --
+
+                </p>
+
+            </div>
+
+            <div class="info-card">
+
+                <h4>
+
+                    Fingerprint
+
+                </h4>
+
+                <p id="fingerprintRisk">
+
+                    --
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </aside>
+
+</div>
+
+<script src="../js/chat.js"></script>
+
+</body>
+
+</html>

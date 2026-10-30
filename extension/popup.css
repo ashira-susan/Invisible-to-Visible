@@ -1,0 +1,74 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Popup Body */
+body {
+    width: 330px;
+    background: #0f172a;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Main Container */
+.container {
+    padding: 20px;
+}
+
+/* Heading */
+h1 {
+    text-align: center;
+    color: #38bdf8;
+    margin-bottom: 8px;
+}
+
+/* Tagline */
+.tagline {
+    text-align: center;
+    color: #cbd5e1;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+/* Line */
+hr {
+    border: 1px solid #334155;
+    margin-bottom: 15px;
+}
+
+/* Sub Headings */
+h3 {
+    color: #38bdf8;
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+/* Website & Score */
+#website,
+#score {
+    background: #1e293b;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+/* Button */
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 15px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+/* Button Hover */
+button:hover {
+    background: #1d4ed8;
+}

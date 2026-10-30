@@ -1,0 +1,590 @@
+/* =======================================================
+   PriviLens X AI Boot Screen
+======================================================= */
+
+*{
+
+    margin:0;
+
+    padding:0;
+
+    box-sizing:border-box;
+
+}
+
+:root{
+
+    --bg:#040816;
+
+    --primary:#22d3ee;
+
+    --secondary:#2563eb;
+
+    --accent:#7c3aed;
+
+    --white:#ffffff;
+
+}
+
+body{
+
+    font-family:'Inter',sans-serif;
+
+    background:var(--bg);
+
+    color:white;
+
+    overflow:hidden;
+
+}
+
+/* =======================================
+   Animated Background
+======================================= */
+
+.background{
+
+    position:fixed;
+
+    inset:0;
+
+    background:
+        radial-gradient(circle at 20% 20%,rgba(34,211,238,.15),transparent 40%),
+        radial-gradient(circle at 80% 80%,rgba(124,58,237,.15),transparent 40%),
+        radial-gradient(circle at 50% 50%,rgba(37,99,235,.12),transparent 45%);
+
+    animation:backgroundMove 10s ease-in-out infinite;
+
+}
+
+/* =======================================
+   Boot Container
+======================================= */
+
+.bootContainer{
+
+    width:100%;
+
+    height:100vh;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    text-align:center;
+
+    z-index:10;
+
+    position:relative;
+
+}
+
+/* =======================================
+   Logo
+======================================= */
+
+.logo{
+
+    font-size:3rem;
+
+    font-weight:800;
+
+    margin-bottom:40px;
+
+}
+
+.logo span{
+
+    color:var(--primary);
+
+}
+
+/* =======================================
+   Title
+======================================= */
+
+.bootContainer h1{
+
+    font-size:2.5rem;
+
+    margin-bottom:20px;
+
+}
+
+#bootMessage{
+
+    color:#b8c7e8;
+
+    font-size:1.1rem;
+
+    margin-bottom:40px;
+
+}
+
+/* =======================================
+   Progress Bar
+======================================= */
+
+.progress{
+
+    width:500px;
+
+    height:12px;
+
+    background:rgba(255,255,255,.08);
+
+    border-radius:30px;
+
+    overflow:hidden;
+
+    margin-bottom:20px;
+
+}
+
+.progressFill{
+
+    width:0%;
+
+    height:100%;
+
+    background:linear-gradient(
+
+        90deg,
+
+        #22d3ee,
+
+        #2563eb
+
+    );
+
+    border-radius:30px;
+
+}
+
+/* =======================================
+   Percentage
+======================================= */
+
+.percentage{
+
+    font-size:2rem;
+
+    font-weight:700;
+
+    color:#22d3ee;
+
+}
+
+/* =======================================
+   Animation
+======================================= */
+
+@keyframes backgroundMove{
+
+    0%,100%{
+
+        transform:scale(1);
+
+    }
+
+    50%{
+
+        transform:scale(1.1);
+
+    }
+
+}/* =======================================================
+   AI CORE
+======================================================= */
+
+.bootContainer::before{
+
+    content:"";
+
+    position:absolute;
+
+    width:380px;
+
+    height:380px;
+
+    border-radius:50%;
+
+    border:1px solid rgba(34,211,238,.12);
+
+    animation:rotateRing 15s linear infinite;
+
+}
+
+.bootContainer::after{
+
+    content:"";
+
+    position:absolute;
+
+    width:520px;
+
+    height:520px;
+
+    border-radius:50%;
+
+    border:1px solid rgba(37,99,235,.10);
+
+    animation:rotateRingReverse 22s linear infinite;
+
+}
+
+/* =======================================================
+   PULSE GLOW
+======================================================= */
+
+.logo{
+
+    animation:logoPulse 2s infinite;
+
+    text-shadow:
+
+        0 0 20px rgba(34,211,238,.6),
+
+        0 0 45px rgba(34,211,238,.3);
+
+}
+
+/* =======================================================
+   FLOATING PARTICLES
+======================================================= */
+
+.background::before{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
+
+    background-image:
+
+        radial-gradient(#22d3ee 1px,transparent 1px);
+
+    background-size:55px 55px;
+
+    opacity:.15;
+
+    animation:gridMove 20s linear infinite;
+
+}
+
+/* =======================================================
+   SCANNING LINE
+======================================================= */
+
+.progress{
+
+    position:relative;
+
+}
+
+.progress::after{
+
+    content:"";
+
+    position:absolute;
+
+    top:0;
+
+    left:-30%;
+
+    width:25%;
+
+    height:100%;
+
+    background:
+
+        linear-gradient(
+
+            90deg,
+
+            transparent,
+
+            rgba(255,255,255,.7),
+
+            transparent
+
+        );
+
+    animation:scanBar 2s linear infinite;
+
+}
+
+/* =======================================================
+   GLOW
+======================================================= */
+
+.progressFill{
+
+    box-shadow:
+
+        0 0 18px #22d3ee,
+
+        0 0 35px #22d3ee;
+
+}
+
+/* =======================================================
+   ANIMATIONS
+======================================================= */
+
+@keyframes rotateRing{
+
+    from{
+
+        transform:rotate(0deg);
+
+    }
+
+    to{
+
+        transform:rotate(360deg);
+
+    }
+
+}
+
+@keyframes rotateRingReverse{
+
+    from{
+
+        transform:rotate(360deg);
+
+    }
+
+    to{
+
+        transform:rotate(0deg);
+
+    }
+
+}
+
+@keyframes logoPulse{
+
+    0%,100%{
+
+        transform:scale(1);
+
+    }
+
+    50%{
+
+        transform:scale(1.05);
+
+    }
+
+}
+
+@keyframes scanBar{
+
+    from{
+
+        left:-30%;
+
+    }
+
+    to{
+
+        left:130%;
+
+    }
+
+}
+
+@keyframes gridMove{
+
+    from{
+
+        transform:translateY(0);
+
+    }
+
+    to{
+
+        transform:translateY(55px);
+
+    }
+
+}/* =======================================================
+   FLOATING AI PARTICLES
+======================================================= */
+
+.background span{
+
+    position:absolute;
+
+    width:6px;
+
+    height:6px;
+
+    border-radius:50%;
+
+    background:#22d3ee;
+
+    box-shadow:
+
+        0 0 15px #22d3ee,
+
+        0 0 35px #22d3ee;
+
+    animation:particleFloat linear infinite;
+
+}
+
+.background span:nth-child(1){
+
+    left:10%;
+
+    animation-duration:12s;
+
+}
+
+.background span:nth-child(2){
+
+    left:25%;
+
+    animation-duration:16s;
+
+}
+
+.background span:nth-child(3){
+
+    left:40%;
+
+    animation-duration:14s;
+
+}
+
+.background span:nth-child(4){
+
+    left:55%;
+
+    animation-duration:18s;
+
+}
+
+.background span:nth-child(5){
+
+    left:70%;
+
+    animation-duration:13s;
+
+}
+
+.background span:nth-child(6){
+
+    left:85%;
+
+    animation-duration:15s;
+
+}
+
+/* =======================================================
+   TITLE EFFECT
+======================================================= */
+
+.bootContainer h1{
+
+    text-shadow:
+
+        0 0 20px rgba(34,211,238,.45);
+
+}
+
+/* =======================================================
+   MESSAGE
+======================================================= */
+
+#bootMessage{
+
+    min-height:30px;
+
+    font-weight:500;
+
+    letter-spacing:1px;
+
+}
+
+/* =======================================================
+   PERCENTAGE
+======================================================= */
+
+.percentage{
+
+    text-shadow:
+
+        0 0 15px rgba(34,211,238,.7);
+
+}
+
+/* =======================================================
+   RESPONSIVE
+======================================================= */
+
+@media(max-width:768px){
+
+    .bootContainer h1{
+
+        font-size:2rem;
+
+    }
+
+    .logo{
+
+        font-size:2.4rem;
+
+    }
+
+    .progress{
+
+        width:90%;
+
+    }
+
+}
+
+/* =======================================================
+   PARTICLE ANIMATION
+======================================================= */
+
+@keyframes particleFloat{
+
+    from{
+
+        transform:translateY(110vh);
+
+        opacity:0;
+
+    }
+
+    20%{
+
+        opacity:1;
+
+    }
+
+    80%{
+
+        opacity:1;
+
+    }
+
+    to{
+
+        transform:translateY(-120px);
+
+        opacity:0;
+
+    }
+
+}

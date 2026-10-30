@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>PriviLens X | Mission Control</title>
+
+<link
+href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+rel="stylesheet">
+
+<link
+rel="stylesheet"
+href="../css/dashboard.css">
+
+</head>
+
+<body>
+
+<!-- ========================= -->
+<!-- Sidebar -->
+<!-- ========================= -->
+
+<aside class="sidebar">
+
+    <div class="logo">
+
+        PriviLens <span>X</span>
+
+    </div>
+
+    <nav>
+
+        <a class="active">
+
+            🏠 Dashboard
+
+        </a>
+
+        <a>
+
+            🛡 Trust Analysis
+
+        </a>
+
+        <a>
+
+            🍪 Cookies
+
+        </a>
+
+        <a>
+
+            👁 Fingerprint
+
+        </a>
+
+        <a>
+
+            🌍 Websites
+
+        </a>
+
+        <a>
+
+            📊 AI Reports
+
+        </a>
+
+        <a>
+
+            🧬 Digital Twin
+
+        </a>
+
+        <a>
+
+            ⚙ Settings
+
+        </a>
+
+    </nav>
+
+</aside>
+
+<!-- ========================= -->
+<!-- Main -->
+<!-- ========================= -->
+
+<main class="mainContent">
+
+<!-- ========================= -->
+<!-- Top Bar -->
+<!-- ========================= -->
+
+<header class="topbar">
+
+<div class="searchBox">
+
+<input
+
+type="text"
+
+placeholder="Search websites...">
+
+</div>
+
+<div class="topRight">
+
+<button class="notification">
+
+🔔
+
+</button>
+
+<div class="profile">
+
+<img
+
+src="https://ui-avatars.com/api/?name=Hari&background=3B82F6&color=fff"
+
+alt="profile">
+
+<div>
+
+<h4>
+
+Hari Vishnu
+
+</h4>
+
+<p>
+
+AI Analyst
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</header>
+
+<!-- ========================= -->
+<!-- Hero -->
+<!-- ========================= -->
+
+<section class="hero">
+
+<div>
+
+<h1>
+
+Welcome Back 👋
+
+</h1>
+
+<p>
+
+Your AI Privacy Operating System is actively monitoring your digital footprint.
+
+</p>
+<div class="currentWebsite">
+
+    🌐 Current Website :
+
+    <span id="websiteName">
+
+        Waiting...
+
+    </span>
+
+</div>
+
+</div>
+
+<div class="heroButton">
+
+<button>
+
+Run Live Scan
+
+</button>
+
+</div>
+
+</section>
+<!-- ========================= -->
+<!-- Analytics Cards -->
+<!-- ========================= -->
+
+<section class="statsGrid">
+
+    <div class="cardTop">
+
+        <span>🔒 HTTPS</span>
+
+    </div>
+
+    <h2 id="httpsStatus">
+
+        --
+
+    </h2>
+
+    <p>
+
+        Website Encryption
+
+    </p>
+
+</div>
+</section>
+
+<div class="statCard">
+
+    <div class="cardTop">
+
+        <span>⚠ Risk Level</span>
+
+    </div>
+
+    <h2 id="riskLevel">
+
+        --
+
+    </h2>
+
+    <p>
+
+        AI Decision
+
+    </p>
+
+</div>
+
+    <!-- Trust Score -->
+
+    <div class="statCard trustCard">
+
+        <div class="cardTop">
+
+            <span>🛡 Trust Score</span>
+
+            <span class="status safe">
+
+                SAFE
+
+            </span>
+
+        </div>
+
+        <h2 id="trustScore">
+
+            96%
+
+        </h2>
+
+        <p>
+
+            Excellent digital safety level.
+
+        </p>
+
+        <div class="progressCircle">
+
+            <div class="circle">
+
+                96
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Cookies -->
+
+    <div class="statCard">
+
+        <div class="cardTop">
+
+            <span>🍪 Cookies</span>
+
+        </div>
+
+        <h2 id="cookieCount">
+
+            24
+
+        </h2>
+
+        <p>
+
+            Active browser cookies
+
+        </p>
+
+    </div>
+
+    <!-- Trackers -->
+
+    <div class="statCard">
+
+        <div class="cardTop">
+
+            <span>👁 Trackers</span>
+
+        </div>
+
+        <h2 id="trackerCount">
+
+            4
+
+        </h2>
+
+        <p>
+
+            Third-party trackers detected
+
+        </p>
+
+    </div>
+
+    <!-- Fingerprint -->
+
+    <div class="statCard">
+
+        <div class="cardTop">
+
+            <span>🧬 Fingerprint</span>
+
+        </div>
+
+        <h2 id="fingerprintScore">
+
+            87%
+
+        </h2>
+
+        <p>
+
+            Browser uniqueness score
+
+        </p>
+
+    </div>
+    <div class="statCard">
+
+    <div class="cardTop">
+
+        <span>🧬 Fingerprint Risk</span>
+
+    </div>
+
+    <h2 id="fingerprintRisk">
+
+        --
+
+    </h2>
+
+    <p>
+
+        Device Identifiability
+
+    </p>
+
+</div>
+
+</section>
+<!-- ====================================== -->
+<!-- LIVE AI ANALYSIS -->
+<!-- ====================================== -->
+
+<section class="aiPanel">
+
+    <div class="panelHeader">
+
+        <h2>🤖 Live AI Website Analysis</h2>
+
+        <span class="liveBadge">
+
+            ● LIVE
+
+        </span>
+
+    </div>
+
+    <div id="analysisLog" class="analysisLog">
+
+    </div>
+
+</section>
+<!-- ====================================== -->
+<!-- COOKIE INTELLIGENCE -->
+<!-- ====================================== -->
+
+<section class="cookiePanel">
+
+<h2>
+
+🍪 Cookie Intelligence
+
+</h2>
+
+<div id="cookieContainer">
+
+</div>
+
+</section>
+<!-- ====================================== -->
+<!-- NETWORK CONNECTIONS -->
+<!-- ====================================== -->
+
+<section class="networkPanel">
+
+<h2>
+
+🌐 Network Connections
+
+</h2>
+
+<div id="networkContainer">
+
+</div>
+
+</section>
+<!-- ====================================== -->
+<!-- AI SUMMARY -->
+<!-- ====================================== -->
+
+<section class="summaryPanel">
+
+<h2>
+
+🧠 AI Privacy Summary
+
+</h2>
+
+<div id="summaryText">
+
+Waiting for browser analysis...
+
+</div>
+
+</section>
+
+<!-- ========================= -->
+<!-- Live Activity -->
+<!-- ========================= -->
+
+<section class="activitySection">
+
+    <div class="activityCard">
+
+        <div class="sectionHeader">
+
+            <h2>
+
+                ⚡ Live Privacy Activity
+
+            </h2>
+
+            <button>
+
+                View All
+
+            </button>
+
+        </div>
+
+        <ul class="activityList">
+
+            <li>
+
+                <span class="greenDot"></span>
+
+                Amazon loaded 2 third-party trackers
+
+            </li>
+
+            <li>
+
+                <span class="yellowDot"></span>
+
+                Chrome cookies updated
+
+            </li>
+
+            <li>
+
+                <span class="blueDot"></span>
+
+                Browser fingerprint analysed
+
+            </li>
+
+            <li>
+
+                <span class="redDot"></span>
+
+                New permission requested
+
+            </li>
+
+        </ul>
+
+    </div>
+<div class="dashboard-card">
+
+    <h2>🤖 Live AI Analysis</h2>
+
+    <div id="liveAnalysis"></div>
+
+</div>
+</section>
+</main>
+
+<script src="../js/dashboard.js"></script>
+
+</body>
+
+</html>
