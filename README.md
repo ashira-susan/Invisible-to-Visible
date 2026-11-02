@@ -171,7 +171,7 @@ The `legacy/` directory contains the archived earlier prototype. The active M1 i
 - [ ] Strengthen error handling and performance
 - [ ] Prepare for production deployment
 
-## Why I Built This
+## Why PriviLens Exists
 
 Modern websites interact with users and collect information in ways that are not always immediately visible.
 
