@@ -1,0 +1,6 @@
+{
+  "name": "invisible-to-visible-extension",
+  "private": true,
+  "type": "module",
+  "description": "Only used so `node --test` can run the extension's unit tests. Chrome ignores this file."
+}
