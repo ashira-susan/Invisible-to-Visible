@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invisible to Visible</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Sites you've visited</h1>
+      <p id="status" role="status">Loading…</p>
+    </header>
+
+    <div id="list" aria-live="polite"></div>
+
+    <section id="empty" hidden>
+      <h2 id="empty-title"></h2>
+      <p id="empty-text"></p>
+    </section>
+
+    <footer>
+      <h2>Your data</h2>
+      <p>Stored only on this computer. Right now that is the site name, whether it used HTTPS, and the time.</p>
+      <button id="delete" type="button" class="danger">Delete all my data</button>
+    </footer>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>
