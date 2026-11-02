@@ -1,191 +1,182 @@
-**Invisible to Visible 🕵️‍♂️**
+# Invisible to Visible (PriviLens)
 
-**🚧 Status: In Progress** — actively being built and improved.
+**Status: M1 – Data Contract and First End-to-End Flow merged into `main`.**
 
-A privacy-monitoring tool that detects web tracking, data collection, and fingerprinting attempts in real time — and scores how trustworthy a site is.
+Invisible to Visible (PriviLens) is a privacy-awareness project designed to make website visits and privacy-related activity more transparent through a browser extension and dashboard.
 
----
+## Current Implementation – M1
 
-**🚀 What it does**
-Detects hidden tracking scripts, cookies, and fingerprinting techniques on websites
-Calculates a real-time **Trust Score** based on privacy risk
-Makes invisible data-collection activity visible to the user
-Available both as a **web application** and a **browser extension**
+The first implementation establishes a consent-based browser visit recording flow.
 
----
+- Chrome extension with explicit user consent.
+- Captures website hostnames when visiting websites.
+- Sends visit information to a FastAPI backend.
+- Validates incoming data using a versioned data contract.
+- Stores visit records in a local SQLite database.
+- Displays recorded visits in a day-grouped dashboard.
+- Supports pausing and resuming recording, and deleting recorded data.
 
-**🛠️ Built With**
-**Python** — backend logic / analysis
-**HTML, CSS, JavaScript** — frontend and browser extension
+### Privacy by Design
 
----
+M1 follows a hostname-only collection approach:
 
-**⚙️ Setup & Installation**
+- Stores website hostnames rather than complete URLs.
+- Does not collect URL paths, query parameters, page titles or page content.
+- Requires user consent before recording visits.
+- Does not collect cookies, browser fingerprints or tracking scripts in M1.
 
-Follow the steps below to set up and run PriviLens locally.
+## Built With
 
-**1. Clone the Repository**
+- **Python** – Backend development
+- **FastAPI** – Backend API
+- **SQLite** – Local data storage
+- **JavaScript** – Browser extension and dashboard
+- **HTML and CSS** – User interface
+- **Chrome Extension APIs** – Browser integration
+
+## Setup and Installation
+
+### 1. Clone the Repository
 
 ```powershell
 git clone https://github.com/ashira-susan/Invisible-to-Visible.git
 cd Invisible-to-Visible
 ```
 
-### Backend Setup
+### 2. Set Up the Backend
 
-From the project root, create a Python virtual environment:
+Create a virtual environment from the project root:
 
 ```powershell
 py -3.14 -m venv .venv
 ```
 
-Activate it in PowerShell:
+Activate it:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install the dependencies:
-
-```powershell
-python -m pip install -r .\backend\requirements.txt
-```
-
-Start the backend from the `backend` directory:
+Move into the backend directory:
 
 ```powershell
 cd backend
-python -m uvicorn app:app --reload
 ```
 
-The backend will be available at `http://127.0.0.1:8000`, and the API documentation at `http://127.0.0.1:8000/docs`.
-
-If PowerShell blocks virtual-environment activation, use the environment's Python executable directly instead:
+Install dependencies:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r .\backend\requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-Then start the server from the `backend` directory with:
+Start the FastAPI server:
 
 ```powershell
-..\.venv\Scripts\python.exe -m uvicorn app:app --reload
+python -m uvicorn itv.main:app --reload
 ```
 
-The backend will be available at: ``` http://127.0.0.1:8000 ```
+The backend runs at:
 
-**3. Load the Browser Extension**
+`http://127.0.0.1:8000`
 
-PriviLens uses a browser extension to capture privacy-related signals from websites.
+API documentation:
 
-**For Google Chrome:**
+`http://127.0.0.1:8000/docs`
 
-Open chrome://extensions/
-Enable Developer mode
-Click Load unpacked
-Select the project's extension directory
-Pin the PriviLens extension to the browser toolbar
+### 3. Load the Chrome Extension
 
-**For Microsoft Edge:**
+1. Open `chrome://extensions/` in Google Chrome.
+2. Enable **Developer mode**.
+3. Click **Load unpacked**.
+4. Select the project's `extension` directory.
+5. Pin the PriviLens extension to the browser toolbar.
 
-Open edge://extensions/
-Enable Developer mode
-Click Load unpacked
-Select the project's extension directory
+### 4. Run and Test the Application
 
-**4. Run the Application**
+1. Keep the FastAPI backend running.
+2. Open the PriviLens extension.
+3. Review and grant recording consent.
+4. Visit a website.
+5. Open the dashboard through the extension.
+6. Verify that the recorded hostname appears in the visits list.
 
-Ensure that the FastAPI backend is running before testing the extension. Open a website in Chrome or Edge and click the PriviLens extension. The extension analyzes privacy-related signals such as:
+You can also test pausing, resuming and deleting recorded data.
 
-Cookies and storage usage
-Third-party scripts and trackers
-Browser fingerprinting indicators
-HTTPS security
-Network and website activity
+## Testing
 
-The collected signals are sent to the backend for analysis and used to generate the website's Digital Trust Score.
+The M1 implementation includes:
 
-**5. Verify the Setup**
+- Backend API and data contract tests.
+- Chrome extension tests.
+- Browser-level end-to-end testing.
 
-If the setup is successful:
+Verified test results during M1 development:
 
-✅ The FastAPI backend runs on 127.0.0.1:8000
-✅ The PriviLens extension appears in the browser
-✅ Website privacy signals are detected
-✅ Signals are processed by the backend
-✅ A privacy/trust analysis is displayed in the extension
+- Backend: 39 tests passed.
+- Extension: 6 tests passed.
 
-**Note:** Keep the backend server running while testing the browser extension.
+## Project Structure
 
----
+```text
+Invisible-to-Visible/
+│
+├── backend/
+│   ├── itv/
+│   ├── tests/
+│   ├── tools/
+│   ├── requirements.txt
+│   └── requirements-dev.txt
+│
+├── dashboard/
+│   ├── app.js
+│   ├── index.html
+│   └── styles.css
+│
+├── extension/
+│   ├── consent/
+│   ├── lib/
+│   ├── popup/
+│   ├── tests/
+│   └── manifest.json
+│
+├── docs/
+│   ├── data-contract.md
+│   ├── examples/
+│   └── schemas/
+│
+└── legacy/
+    ├── backend/
+    ├── dashboard/
+    └── extension/
+```
 
-## 📸 Preview
+The `legacy/` directory contains the archived earlier prototype. The active M1 implementation is maintained in the main project directories.
 
-> 🚧 **Prototype / Work in Progress**
+## Roadmap
 
-PriviLens is currently under active development. The current prototype demonstrates real-time website privacy signal detection and analysis, including cookies, storage usage, scripts, trackers, browser fingerprinting indicators, and HTTPS status.
+- [x] Clean project structure and repository history (M0)
+- [x] Versioned data contract
+- [x] FastAPI backend and scans API
+- [x] Chrome extension consent flow
+- [x] Hostname-only website visit capture
+- [x] Dashboard visit history
+- [x] Backend and extension tests
+- [x] M1 implementation merged into `main`
+- [ ] Expand privacy signal collection
+- [ ] Detect third-party trackers and scripts
+- [ ] Cookie and storage analysis
+- [ ] Browser fingerprinting analysis
+- [ ] Develop and validate privacy risk scoring
+- [ ] Improve dashboard visualizations
+- [ ] Strengthen error handling and performance
+- [ ] Prepare for production deployment
 
-### Current Prototype
+## Why I Built This
 
-* 🖥️ PriviLens browser extension popup
-  <img width="1917" height="1023" alt="image" src="https://github.com/user-attachments/assets/3dd9b49e-f020-4375-91b5-3e892641caa1" />
-* 🔍 Website privacy signal detection
-  <img width="617" height="492" alt="image" src="https://github.com/user-attachments/assets/21d0edb2-1363-4b37-bbae-7e811b982f2a" />
-* ⚙️ Backend analysis response
-  <img width="1301" height="985" alt="image" src="https://github.com/user-attachments/assets/b3e9c1e8-cf98-4b7b-bad8-9653a06021e3" />
+Modern websites interact with users and collect information in ways that are not always immediately visible.
 
+Invisible to Visible aims to make these activities easier to understand through a simple, transparent and user-controlled interface.
 
-> **Note:** The screenshots represent the current development prototype. The user interface, detection capabilities, and Trust Score logic are continuously being improved.
+**The goal is to turn invisible digital activity into visible, understandable information.**
 
----
-
-**📌 Why I Built This**
-
-Built to raise awareness of how much tracking happens invisibly while browsing, and to give users a simple, visual way to see and understand it.
-Modern websites collect and process a significant amount of information in the background, often without users clearly understanding what is happening.
-
-**PriviLens** – Invisible to Visible was built to make these invisible privacy activities more transparent. The project aims to help users understand what websites can observe, what privacy signals are being generated, and how these signals contribute to an overall Trust Score through a simple and visual interface.
-
-The goal is to turn complex privacy information into insights that are easier for everyday users to understand.
-
-🔮 Roadmap / What's Left
-
-PriviLens is currently a working prototype and is under active development.
-
-Browser extension prototype ✅
-
-Website privacy signal collection✅
-
-Cookie and storage analysis✅
-
-Script and tracker detection✅
-
-Browser fingerprinting signal collection✅
-
-HTTPS/security signal detection✅
-
-FastAPI backend integration✅
-
-Initial Trust Score implementation✅
-
-Refine and validate Trust Score calculation✅
-
-Expand tracker and third-party domain detection❌
-
-Improve frontend dashboard and visualizations❌
-
-Strengthen real-time communication between extension and backend❌
-
-Add more comprehensive privacy analysis❌
-
-Improve testing and error handling❌
-
-Optimize performance and detection accuracy❌
-
-Complete end-to-end integration❌
-
-Prepare the project for production deployment❌
-
-🚧 Status: PriviLens is currently in the prototype/development stage. Features and analysis logic are continuously being improved.
-
-**Feedback and suggestions are welcome!**
+Feedback and suggestions are welcome!
