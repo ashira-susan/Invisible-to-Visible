@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invisible to Visible: consent</title>
+  <link rel="stylesheet" href="consent.css">
+</head>
+<body>
+  <main>
+    <h1>Before anything is recorded</h1>
+    <p class="lead">Invisible to Visible shows you what happens behind the pages you open. This first version does one small thing.</p>
+
+    <h2>What it records</h2>
+    <p>The name of each website you open (for example <code>news.example.com</code>), whether it used HTTPS, and the time.</p>
+
+    <h2>What it never records</h2>
+    <p>Page addresses beyond the site name, page titles or content, passwords, form entries, or anything you type.</p>
+
+    <h2>Where it goes</h2>
+    <p>To the Invisible to Visible server running on this computer (<code>127.0.0.1</code>). It is not sent anywhere else.</p>
+
+    <h2>Your control</h2>
+    <p>Pause recording from the toolbar icon at any time. Delete everything stored from the dashboard. If a later version wants to collect more, it will ask you again first.</p>
+
+    <div class="actions">
+      <button id="allow" type="button" class="primary">Allow recording</button>
+      <button id="decline" type="button">Not now</button>
+    </div>
+    <p id="result" role="status"></p>
+  </main>
+  <script type="module" src="consent.js"></script>
+</body>
+</html>

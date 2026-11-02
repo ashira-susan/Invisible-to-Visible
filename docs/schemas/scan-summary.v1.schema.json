@@ -1,0 +1,192 @@
+{
+  "$defs": {
+    "CookieCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "first_party": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "First Party",
+          "type": "integer"
+        },
+        "third_party": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Third Party",
+          "type": "integer"
+        }
+      },
+      "title": "CookieCounts",
+      "type": "object"
+    },
+    "FingerprintingCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "canvas": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Canvas",
+          "type": "integer"
+        },
+        "webgl": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Webgl",
+          "type": "integer"
+        },
+        "audio": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Audio",
+          "type": "integer"
+        },
+        "font": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Font",
+          "type": "integer"
+        }
+      },
+      "title": "FingerprintingCounts",
+      "type": "object"
+    },
+    "Signals": {
+      "additionalProperties": false,
+      "description": "What the page did. Empty in M1; the extension fills these in from M2.",
+      "properties": {
+        "third_party_requests": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Third Party Requests",
+          "type": "integer"
+        },
+        "trackers": {
+          "items": {
+            "$ref": "#/$defs/TrackerSeen"
+          },
+          "maxItems": 200,
+          "title": "Trackers",
+          "type": "array"
+        },
+        "cookies": {
+          "$ref": "#/$defs/CookieCounts"
+        },
+        "fingerprinting": {
+          "$ref": "#/$defs/FingerprintingCounts"
+        },
+        "geolocation_calls": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Geolocation Calls",
+          "type": "integer"
+        }
+      },
+      "title": "Signals",
+      "type": "object"
+    },
+    "Site": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 253,
+          "minLength": 1,
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$",
+          "title": "Domain",
+          "type": "string"
+        },
+        "https": {
+          "title": "Https",
+          "type": "boolean"
+        },
+        "referrer_origin": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "pattern": "^https?://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*(?::[0-9]{1,5})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Referrer Origin"
+        }
+      },
+      "required": [
+        "domain",
+        "https"
+      ],
+      "title": "Site",
+      "type": "object"
+    },
+    "TrackerCategory": {
+      "enum": [
+        "advertising",
+        "analytics",
+        "social",
+        "fingerprinting",
+        "content",
+        "other"
+      ],
+      "title": "TrackerCategory",
+      "type": "string"
+    },
+    "TrackerSeen": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 253,
+          "minLength": 1,
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$",
+          "title": "Domain",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/TrackerCategory",
+          "default": "other"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "TrackerSeen",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One page visit, summarised on the device. Identity travels in the\nX-Install-ID header, not in the body.",
+  "properties": {
+    "schema_version": {
+      "const": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "site": {
+      "$ref": "#/$defs/Site"
+    },
+    "signals": {
+      "$ref": "#/$defs/Signals"
+    }
+  },
+  "required": [
+    "schema_version",
+    "observed_at",
+    "site"
+  ],
+  "title": "Invisible to Visible scan summary v1",
+  "type": "object"
+}

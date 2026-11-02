@@ -10,3 +10,6 @@ venv/
 
 *.zip
 backend/history.json
+
+.pytest_cache/
+backend/data/

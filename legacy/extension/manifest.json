@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "PriviLens",
+  "version": "1.0",
+  "description": "Making the Invisible Visible",
+
+  "permissions": [
+    "activeTab",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:8000/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+  {
+    "matches": ["<all_urls>"],
+    "js": [
+      "collector/cookies.js",
+      "collector/storage.js",
+      "collector/scripts.js",
+      "collector/trackers.js",
+      "collector/permissions.js",
+      "collector/fingerprint.js",
+      "collector/requests.js",
+      "collector/headers.js",
+      "collector/network.js",
+      "detector.js"
+    ],
+    "run_at": "document_idle"
+  }
+],
+
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
