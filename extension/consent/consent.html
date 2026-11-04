@@ -9,13 +9,17 @@
 <body>
   <main>
     <h1>Before anything is recorded</h1>
-    <p class="lead">Invisible to Visible shows you what happens behind the pages you open. This first version does one small thing.</p>
+    <p class="lead">Invisible to Visible shows you what happens behind the pages you open. You choose how much it sees.</p>
 
-    <h2>What it records</h2>
+    <h2>Always recorded, if you allow anything</h2>
     <p>The name of each website you open (for example <code>news.example.com</code>), whether it used HTTPS, and the time.</p>
 
-    <h2>What it never records</h2>
-    <p>Page addresses beyond the site name, page titles or content, passwords, form entries, or anything you type.</p>
+    <h2>Also, if you allow tracker detection</h2>
+    <p>While a page loads, the extension watches the <em>addresses</em> of the requests it makes to other sites. It keeps only how many there were and the names of known tracking companies among them (for example <code>doubleclick.net</code>, operated by Google). Every other address is forgotten as soon as the page's summary is made.</p>
+    <p>To do this, Chrome will ask you to allow access to <strong>all websites</strong>. Chrome words that request broadly. This extension only observes request addresses. It does not read page content, change pages, or block anything. You can take the access back later in Chrome's extension settings.</p>
+
+    <h2>Never recorded</h2>
+    <p>Full page addresses beyond the site name, page titles or content, passwords, form entries, or anything you type.</p>
 
     <h2>Where it goes</h2>
     <p>To the Invisible to Visible server running on this computer (<code>127.0.0.1</code>). It is not sent anywhere else.</p>
@@ -24,7 +28,8 @@
     <p>Pause recording from the toolbar icon at any time. Delete everything stored from the dashboard. If a later version wants to collect more, it will ask you again first.</p>
 
     <div class="actions">
-      <button id="allow" type="button" class="primary">Allow recording</button>
+      <button id="allow-full" type="button" class="primary">Allow site names and tracker detection</button>
+      <button id="allow-basic" type="button">Allow site names only</button>
       <button id="decline" type="button">Not now</button>
     </div>
     <p id="result" role="status"></p>
