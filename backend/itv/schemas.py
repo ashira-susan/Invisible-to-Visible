@@ -43,9 +43,17 @@ class TrackerCategory(str, Enum):
     other = "other"
 
 
+Company = Annotated[str, StringConstraints(min_length=1, max_length=100)]
+
+
 class TrackerSeen(StrictModel):
+    """A known tracker the page contacted. `domain` is the listed tracker domain
+    (doubleclick.net), not the exact subdomain that was requested."""
+
     domain: Hostname
     category: TrackerCategory = TrackerCategory.other
+    company: Company | None = None
+    known_fingerprinter: bool = False  # the tracker list marks it as using fingerprinting
 
 
 class CookieCounts(StrictModel):
@@ -61,8 +69,11 @@ class FingerprintingCounts(StrictModel):
 
 
 class Signals(StrictModel):
-    """What the page did. Empty in M1; the extension fills these in from M2."""
+    """What the page did. Missing values mean "none seen", except that
+    `trackers_checked` tells you whether anyone was looking: False means the user only
+    allowed site names, so an empty tracker list is "unknown", not "clean"."""
 
+    trackers_checked: bool = False
     third_party_requests: Count = 0
     trackers: list[TrackerSeen] = Field(default_factory=list, max_length=200)
     cookies: CookieCounts = Field(default_factory=CookieCounts)
@@ -105,12 +116,17 @@ class ScanCreated(BaseModel):
 
 
 class ScanOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     domain: str
     https: bool
     observed_at: datetime
+    third_party_requests: int = 0
+    tracker_count: int = 0
+    trackers_checked: bool = False
+
+
+class ScanDetail(ScanOut):
+    signals: Signals
 
 
 class ScanList(BaseModel):

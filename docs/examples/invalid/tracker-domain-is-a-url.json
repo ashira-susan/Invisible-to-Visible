@@ -1,0 +1,8 @@
+{
+  "schema_version": "1",
+  "observed_at": "2026-10-01T09:15:00Z",
+  "site": { "domain": "example.com", "https": true },
+  "signals": {
+    "trackers": [ { "domain": "https://ad.doubleclick.net/path", "category": "advertising" } ]
+  }
+}

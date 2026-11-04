@@ -7,10 +7,12 @@
     "referrer_origin": "https://www.google.com"
   },
   "signals": {
+    "trackers_checked": true,
     "third_party_requests": 23,
     "trackers": [
-      { "domain": "google-analytics.com", "category": "analytics" },
-      { "domain": "doubleclick.net", "category": "advertising" }
+      { "domain": "google-analytics.com", "category": "analytics", "company": "Google", "known_fingerprinter": true },
+      { "domain": "doubleclick.net", "category": "advertising", "company": "Google" },
+      { "domain": "unlisted-company.example", "category": "other" }
     ],
     "cookies": { "first_party": 4, "third_party": 7 },
     "fingerprinting": { "canvas": 2, "webgl": 1, "audio": 0, "font": 0 },

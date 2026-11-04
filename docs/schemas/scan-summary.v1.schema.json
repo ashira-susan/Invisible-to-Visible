@@ -58,8 +58,13 @@
     },
     "Signals": {
       "additionalProperties": false,
-      "description": "What the page did. Empty in M1; the extension fills these in from M2.",
+      "description": "What the page did. Missing values mean \"none seen\", except that\n`trackers_checked` tells you whether anyone was looking: False means the user only\nallowed site names, so an empty tracker list is \"unknown\", not \"clean\".",
       "properties": {
+        "trackers_checked": {
+          "default": false,
+          "title": "Trackers Checked",
+          "type": "boolean"
+        },
         "third_party_requests": {
           "default": 0,
           "maximum": 100000,
@@ -142,6 +147,7 @@
     },
     "TrackerSeen": {
       "additionalProperties": false,
+      "description": "A known tracker the page contacted. `domain` is the listed tracker domain\n(doubleclick.net), not the exact subdomain that was requested.",
       "properties": {
         "domain": {
           "maxLength": 253,
@@ -153,6 +159,25 @@
         "category": {
           "$ref": "#/$defs/TrackerCategory",
           "default": "other"
+        },
+        "company": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Company"
+        },
+        "known_fingerprinter": {
+          "default": false,
+          "title": "Known Fingerprinter",
+          "type": "boolean"
         }
       },
       "required": [
