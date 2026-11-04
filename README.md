@@ -91,6 +91,14 @@ API documentation:
 4. Select the project's `extension` directory.
 5. Pin the PriviLens extension to the browser toolbar.
 
+### Refresh Tracker Data
+
+Run the following command from the project root to refresh the tracker data:
+
+```powershell
+python tools/build_extension_data.py
+```
+
 ### 4. Run and Test the Application
 
 1. Keep the FastAPI backend running.
