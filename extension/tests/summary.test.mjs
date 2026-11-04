@@ -1,7 +1,7 @@
-// Run with:  node --test extension/tests      (needs Node 20 or newer; optional)
+// Run with:  cd extension && node --test      (needs Node 20 or newer; optional)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildScanSummary } from "../lib/summary.js";
+import { buildScanSummary, buildSummary, siteFromUrl } from "../lib/summary.js";
 
 const NOW = new Date("2026-10-01T09:15:00Z");
 
@@ -29,6 +29,11 @@ test("uses the supplied clock and the v1 schema", () => {
   assert.deepEqual(s.signals, {});
 });
 
+test("signals are passed through unchanged", () => {
+  const signals = { third_party_requests: 3, trackers: [{ domain: "ads.test", category: "advertising" }] };
+  assert.deepEqual(buildSummary({ domain: "example.com", https: true }, NOW, signals).signals, signals);
+});
+
 test("ignores pages that must never be recorded", () => {
   for (const url of [
     "chrome://extensions",
@@ -40,6 +45,7 @@ test("ignores pages that must never be recorded", () => {
     "http://[::1]/",              // IPv6 literal, not supported in v1
     "not a url",
   ]) {
+    assert.equal(siteFromUrl(url), null, url);
     assert.equal(buildScanSummary(url, NOW), null, url);
   }
 });

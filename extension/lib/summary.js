@@ -6,36 +6,45 @@ const HOSTNAME_RE = new RegExp(`^${LABEL}(?:\\.${LABEL})*$`);
 
 const BACKEND_ORIGIN = new URL(API_BASE).origin;
 
+/** A valid, lowercase hostname without a trailing dot, or null. */
+export function cleanHostname(hostname) {
+  const host = hostname.toLowerCase().replace(/\.$/, "");
+  if (host.length === 0 || host.length > 253) return null;
+  return HOSTNAME_RE.test(host) ? host : null; // also rejects IPv6 literals like [::1]
+}
+
 /**
- * Turns a page address into the smallest summary we are allowed to send.
- * Only the hostname and whether the page used HTTPS are kept. The path, query,
- * fragment, username and password are never read.
- *
+ * The smallest description of a page we are allowed to keep: its hostname and whether
+ * it used HTTPS. The path, query, fragment, username and password are never read.
  * Returns null for anything that must not be recorded.
  */
-export function buildScanSummary(rawUrl, now = new Date()) {
+export function siteFromUrl(rawUrl) {
   let url;
   try {
     url = new URL(rawUrl);
   } catch {
     return null;
   }
-
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
   if (url.origin === BACKEND_ORIGIN) return null; // never record our own dashboard
 
-  const domain = url.hostname.toLowerCase().replace(/\.$/, "");
-  if (domain.length === 0 || domain.length > 253) return null;
-  if (!HOSTNAME_RE.test(domain)) return null; // also rejects IPv6 literals like [::1]
+  const domain = cleanHostname(url.hostname);
+  if (!domain) return null;
+  return { domain, https: url.protocol === "https:" };
+}
 
+/** Builds the body for POST /api/v1/scans. */
+export function buildSummary(site, observedAt, signals = {}) {
   return {
     schema_version: "1",
-    observed_at: now.toISOString(),
-    site: {
-      domain,
-      https: url.protocol === "https:",
-      referrer_origin: null, // filled in from M2
-    },
-    signals: {}, // filled in from M2; the backend treats missing values as zero
+    observed_at: observedAt.toISOString(),
+    site: { domain: site.domain, https: site.https, referrer_origin: null },
+    signals,
   };
+}
+
+/** M1-style helper, kept for the tests and the "site names only" case. */
+export function buildScanSummary(rawUrl, now = new Date(), signals = {}) {
+  const site = siteFromUrl(rawUrl);
+  return site ? buildSummary(site, now, signals) : null;
 }

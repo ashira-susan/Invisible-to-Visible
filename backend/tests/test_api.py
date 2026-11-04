@@ -93,3 +93,49 @@ def test_delete_with_no_data_is_fine(client):
     r = client.delete("/api/v1/me", headers=headers())
     assert r.status_code == 200
     assert r.json() == {"deleted_scans": 0}
+
+
+def _scan_with_trackers(domain="shop.example.org"):
+    body = scan_body(domain)
+    body["signals"] = {
+        "trackers_checked": True,
+        "third_party_requests": 9,
+        "trackers": [
+            {"domain": "doubleclick.net", "category": "advertising", "company": "Google"},
+            {"domain": "google-analytics.com", "category": "analytics", "company": "Google", "known_fingerprinter": True},
+        ],
+    }
+    return body
+
+
+def test_list_includes_tracker_counts(client):
+    client.post("/api/v1/scans", json=_scan_with_trackers(), headers=headers())
+    client.post("/api/v1/scans", json=scan_body("plain.example.com", "2026-10-01T10:00:00Z"), headers=headers())
+    scans = {s["domain"]: s for s in client.get("/api/v1/scans", headers=headers()).json()["scans"]}
+    assert scans["shop.example.org"]["tracker_count"] == 2
+    assert scans["shop.example.org"]["third_party_requests"] == 9
+    assert scans["shop.example.org"]["trackers_checked"] is True
+    assert scans["plain.example.com"]["trackers_checked"] is False  # site names only: unknown, not clean
+    assert scans["plain.example.com"]["tracker_count"] == 0
+    assert scans["plain.example.com"]["third_party_requests"] == 0
+
+
+def test_detail_returns_the_trackers(client):
+    created = client.post("/api/v1/scans", json=_scan_with_trackers(), headers=headers()).json()
+    r = client.get(f"/api/v1/scans/{created['id']}", headers=headers())
+    assert r.status_code == 200
+    detail = r.json()
+    assert detail["domain"] == "shop.example.org"
+    assert [t["domain"] for t in detail["signals"]["trackers"]] == ["doubleclick.net", "google-analytics.com"]
+    assert detail["signals"]["trackers"][1]["known_fingerprinter"] is True
+    assert detail["signals"]["cookies"] == {"first_party": 0, "third_party": 0}
+
+
+def test_detail_of_another_installs_scan_is_not_found(client):
+    created = client.post("/api/v1/scans", json=_scan_with_trackers(), headers=headers(INSTALL_A)).json()
+    assert client.get(f"/api/v1/scans/{created['id']}", headers=headers(INSTALL_B)).status_code == 404
+    assert client.get("/api/v1/scans/99999", headers=headers(INSTALL_A)).status_code == 404
+
+
+def test_detail_requires_install_id(client):
+    assert client.get("/api/v1/scans/1").status_code == 401

@@ -37,9 +37,27 @@ def test_invalid_examples_are_rejected(path):
 def test_signals_default_to_zero_when_omitted():
     summary = ScanSummary.model_validate(load(EXAMPLES / "valid" / "minimal.json"))
     assert summary.signals.third_party_requests == 0
+    assert summary.signals.trackers_checked is False  # missing = nobody was looking
     assert summary.signals.trackers == []
     assert summary.signals.cookies.third_party == 0
     assert summary.signals.fingerprinting.canvas == 0
+
+
+def test_tracker_company_and_fingerprinter_flag_are_accepted():
+    body = load(EXAMPLES / "valid" / "full.json")
+    summary = ScanSummary.model_validate(body)
+    first = summary.signals.trackers[0]
+    assert first.company == "Google"
+    assert first.known_fingerprinter is True
+    assert summary.signals.trackers[2].company is None
+    assert summary.signals.trackers[2].known_fingerprinter is False
+
+
+def test_overlong_company_name_is_rejected():
+    body = load(EXAMPLES / "valid" / "minimal.json")
+    body["signals"] = {"trackers": [{"domain": "t.example.com", "company": "x" * 101}]}
+    with pytest.raises(ValidationError):
+        ScanSummary.model_validate(body)
 
 
 def test_too_many_trackers_are_rejected():
