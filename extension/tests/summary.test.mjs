@@ -34,6 +34,12 @@ test("signals are passed through unchanged", () => {
   assert.deepEqual(buildSummary({ domain: "example.com", https: true }, NOW, signals).signals, signals);
 });
 
+test("the referrer origin is passed through when given, and is null otherwise", () => {
+  const withRef = buildSummary({ domain: "example.com", https: true, referrerOrigin: "https://www.google.com" }, NOW);
+  assert.equal(withRef.site.referrer_origin, "https://www.google.com");
+  assert.equal(buildSummary({ domain: "example.com", https: true }, NOW).site.referrer_origin, null);
+});
+
 test("ignores pages that must never be recorded", () => {
   for (const url of [
     "chrome://extensions",

@@ -5,7 +5,8 @@ export const API_BASE = "http://127.0.0.1:8000";
 // Everyone is then asked to consent again before the new collection begins.
 //   1 = site names only
 //   2 = site names + which known tracking companies each page contacts (needs all-sites access)
-export const CONSENT_VERSION = 2;
+//   3 = also: how many cookies each page sets, and the site you arrived from (same access)
+export const CONSENT_VERSION = 3;
 
 // Page visits waiting to be sent while the backend is offline.
 export const QUEUE_LIMIT = 200;

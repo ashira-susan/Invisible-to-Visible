@@ -38,7 +38,7 @@ export function buildSummary(site, observedAt, signals = {}) {
   return {
     schema_version: "1",
     observed_at: observedAt.toISOString(),
-    site: { domain: site.domain, https: site.https, referrer_origin: null },
+    site: { domain: site.domain, https: site.https, referrer_origin: site.referrerOrigin ?? null },
     signals,
   };
 }
