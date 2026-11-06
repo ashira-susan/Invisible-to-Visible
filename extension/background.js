@@ -46,8 +46,10 @@ const ready = (async () => {
 async function sendFinishedPage(page) {
   state = await getState(); // the user may have paused or changed consent meanwhile
   if (!isRecording(state)) return;
-  const signals = detectsTrackers(state) ? PageSessions.toSignals(page) : {};
-  const summary = buildSummary({ domain: page.host, https: page.https }, new Date(page.startedAt), signals);
+  const monitored = detectsTrackers(state);
+  const signals = monitored ? PageSessions.toSignals(page) : {};
+  const site = { domain: page.host, https: page.https, referrerOrigin: monitored ? page.referrer : null };
+  const summary = buildSummary(site, new Date(page.startedAt), signals);
   await sendOrQueue(state.installId, summary);
 }
 
@@ -102,6 +104,39 @@ function watchRequests() {
     },
     { urls: ["<all_urls>"] }, // observe only: nothing is blocked or changed
   );
+
+  // Cookies a response sets. Chrome only shows Set-Cookie to listeners that ask for
+  // "extraHeaders". We read the cookie names to count them and drop the values.
+  chrome.webRequest.onHeadersReceived.addListener(
+    async (details) => {
+      if (details.tabId < 0 || !details.responseHeaders) return;
+      const values = [];
+      for (const h of details.responseHeaders) {
+        if (h.name.toLowerCase() === "set-cookie" && h.value) values.push(h.value);
+      }
+      if (values.length === 0) return;
+      await ready;
+      if (!detectsTrackers(state)) return;
+      sessions.addCookies(details.tabId, details.url, values);
+    },
+    { urls: ["<all_urls>"] },
+    ["responseHeaders", "extraHeaders"], // no "blocking": observe only
+  );
+
+  // Where the user came from: the Referer header of the page's own request. Origin only.
+  chrome.webRequest.onSendHeaders.addListener(
+    async (details) => {
+      if (details.tabId < 0 || !details.requestHeaders) return;
+      const referer = details.requestHeaders.find((h) => h.name.toLowerCase() === "referer");
+      if (!referer || !referer.value) return;
+      await ready;
+      if (!detectsTrackers(state)) return;
+      sessions.setReferrer(details.tabId, referer.value); // the full address is not kept
+    },
+    { urls: ["<all_urls>"], types: ["main_frame"] },
+    ["requestHeaders", "extraHeaders"],
+  );
+
   watchingRequests = true;
 }
 watchRequests();

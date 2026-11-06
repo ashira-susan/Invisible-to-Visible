@@ -1,0 +1,6 @@
+{
+  "schema_version": "1",
+  "observed_at": "2026-10-01T09:15:00Z",
+  "site": { "domain": "example.com", "https": true },
+  "signals": { "cookies": { "first_party": 1, "names": ["session_id"] } }
+}

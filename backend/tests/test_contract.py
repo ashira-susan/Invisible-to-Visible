@@ -53,6 +53,14 @@ def test_tracker_company_and_fingerprinter_flag_are_accepted():
     assert summary.signals.trackers[2].known_fingerprinter is False
 
 
+def test_cookie_counts_include_the_tracker_subset():
+    summary = ScanSummary.model_validate(load(EXAMPLES / "valid" / "m2b-cookies-and-referrer.json"))
+    assert summary.signals.cookies.first_party == 3
+    assert summary.signals.cookies.third_party == 8
+    assert summary.signals.cookies.by_trackers == 6
+    assert summary.site.referrer_origin == "https://www.google.com"
+
+
 def test_overlong_company_name_is_rejected():
     body = load(EXAMPLES / "valid" / "minimal.json")
     body["signals"] = {"trackers": [{"domain": "t.example.com", "company": "x" * 101}]}

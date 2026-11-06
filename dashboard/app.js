@@ -80,16 +80,30 @@ async function fillDetail(body, scan) {
   }
 }
 
+function cookieSentence(c) {
+  const total = c.first_party + c.third_party;
+  if (total === 0) return "No cookies were set by the page's responses during this visit.";
+  const parts = [`${c.first_party} by the site itself`, `${c.third_party} by other sites`];
+  const tracker = c.by_trackers > 0 ? ` (${c.by_trackers} of those by known trackers)` : "";
+  return `${plural(total, "cookie was", "cookies were")} set during this visit: ${parts.join(", ")}${tracker}.`;
+}
+
 function detailNodes(detail) {
   const s = detail.signals;
   if (!s.trackers_checked) {
-    return [el("p", null, "Trackers weren't checked for this visit, because only site names were allowed. That doesn't mean there were none.")];
+    return [el("p", null, "Trackers, cookies and the referring site weren't checked for this visit, because only site names were allowed. That doesn't mean there was nothing to find.")];
   }
-  const nodes = [el("p", null, `${plural(s.third_party_requests, "request", "requests")} to other sites.`)];
+  const nodes = [
+    el("p", null, detail.referrer_origin ? `Arrived from ${detail.referrer_origin}.` : "No referring site: a typed address, a bookmark, or a site that hides it."),
+    el("p", null, `${plural(s.third_party_requests, "request", "requests")} to other sites.`),
+    el("p", null, cookieSentence(s.cookies)),
+    el("p", "muted", "Cookies set by a page's own scripts aren't counted yet."),
+  ];
   if (s.trackers.length === 0) {
-    nodes.push(el("p", "muted", "None of them are on the list of known trackers. Unknown trackers can still exist."));
+    nodes.push(el("p", "muted", "None of the sites contacted are on the list of known trackers. Unknown trackers can still exist."));
     return nodes;
   }
+  nodes.push(el("p", null, `${plural(s.trackers.length, "known tracker", "known trackers")}:`));
   const list = el("ul", "trackers");
   for (const t of s.trackers) {
     const row = el("li");
@@ -111,6 +125,9 @@ function visitRow(scan, when) {
   const tags = el("span", "tags");
   tags.append(el("span", scan.https ? "tag https" : "tag http", scan.https ? "HTTPS" : "No HTTPS"));
   tags.append(trackerTag(scan));
+  if (scan.trackers_checked && scan.third_party_cookies > 0) {
+    tags.append(el("span", "tag muted", plural(scan.third_party_cookies, "third-party cookie", "third-party cookies")));
+  }
   summary.append(tags);
 
   const time = el("time", null, when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));

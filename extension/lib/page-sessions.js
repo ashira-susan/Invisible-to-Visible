@@ -3,12 +3,15 @@
 // and the names of known trackers. Nothing here talks to the network.
 
 import { cleanHostname, siteFromUrl } from "./summary.js";
+import { parseSetCookie, cookieKey } from "./cookies.js";
 import { SETTLE_MS } from "./config.js";
 
 export const MAX_TRACKERS = 200;
 const MAX_COUNT = 100_000;
+const MAX_COOKIE_KEYS = 2_000;
 const PENDING_TTL_MS = 3_000;
 const PENDING_MAX = 100;
+const REFERRER_TTL_MS = 30_000;
 
 export class PageSessions {
   /**
@@ -28,7 +31,8 @@ export class PageSessions {
     this.cancel = cancel;
 
     this.pages = new Map(); // tabId -> page
-    this.pending = new Map(); // tabId -> [{ host, t }]  requests seen just before the page started
+    this.pending = new Map(); // tabId -> [item]  requests and cookies seen just before the page started
+    this.referrers = new Map(); // tabId -> { origin, host, t }  from the page's own navigation request
     this.timers = new Map(); // tabId -> timer
     this.seq = 0;
     this.persistTimer = null;
@@ -37,6 +41,8 @@ export class PageSessions {
   async load() {
     const saved = (await this.store.get()) ?? {};
     for (const [tabId, page] of Object.entries(saved)) {
+      page.cookies ??= { first: {}, third: {}, tracker: {} }; // pages saved by an older version
+      page.referrer ??= null;
       this.pages.set(Number(tabId), page);
       this.seq = Math.max(this.seq, page.seq ?? 0);
       this.#arm(Number(tabId), page);
@@ -48,6 +54,8 @@ export class PageSessions {
     // Requests seen a moment ago belong to the page that is starting now, not the old one.
     const early = this.pending.get(tabId) ?? [];
     this.pending.delete(tabId);
+    const arrivedFrom = this.referrers.get(tabId);
+    this.referrers.delete(tabId);
 
     await this.finalize(tabId); // leaving the previous page ends its visit
 
@@ -62,11 +70,21 @@ export class PageSessions {
       startedAt: this.now(),
       thirdParty: 0,
       trackers: {}, // listed domain -> { category, company, fp }
+      cookies: { first: {}, third: {}, tracker: {} }, // hashed "host + cookie name" keys, nothing readable
+      referrer: null, // origin only, e.g. https://www.google.com
     };
     this.pages.set(tabId, page);
 
-    for (const r of early) {
-      if (page.startedAt - r.t <= PENDING_TTL_MS) this.#record(page, r.host);
+    for (const item of early) {
+      if (page.startedAt - item.t > PENDING_TTL_MS) continue;
+      if (item.kind === "cookies") this.#recordCookies(page, item.host, item.keys);
+      else this.#record(page, item.host);
+    }
+
+    // Arriving from another site is worth knowing; arriving from the same site is not.
+    if (arrivedFrom && page.startedAt - arrivedFrom.t <= REFERRER_TTL_MS) {
+      const fromSite = this.psl.registrableDomain(arrivedFrom.host) ?? arrivedFrom.host;
+      if (fromSite !== page.site) page.referrer = arrivedFrom.origin;
     }
 
     this.#arm(tabId, page);
@@ -91,12 +109,59 @@ export class PageSessions {
       this.#persistSoon();
       return;
     }
+    this.#hold(tabId, { kind: "request", host });
+  }
 
-    const list = this.pending.get(tabId) ?? [];
-    const t = this.now();
-    const fresh = list.filter((r) => t - r.t <= PENDING_TTL_MS);
-    fresh.push({ host, t });
-    this.pending.set(tabId, fresh.slice(-PENDING_MAX));
+  /**
+   * A response set cookies. `setCookieHeaders` are the raw Set-Cookie values; they are
+   * reduced to hashed keys immediately and the values are dropped.
+   */
+  addCookies(tabId, rawUrl, setCookieHeaders) {
+    let host;
+    try {
+      const url = new URL(rawUrl);
+      if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) return;
+      host = cleanHostname(url.hostname);
+    } catch {
+      return;
+    }
+    if (!host) return;
+
+    const keys = [];
+    for (const header of setCookieHeaders) {
+      const cookie = parseSetCookie(header, this.now());
+      if (cookie && !cookie.expired) keys.push(cookieKey(host, cookie.name));
+    }
+    if (keys.length === 0) return;
+
+    const page = this.pages.get(tabId);
+    if (page) {
+      this.#recordCookies(page, host, keys);
+      this.#persistSoon();
+      return;
+    }
+    this.#hold(tabId, { kind: "cookies", host, keys });
+  }
+
+  /**
+   * The page's own navigation request carried a Referer header. Only the origin is kept.
+   * Called before the page starts, so it waits here for start() to pick it up.
+   */
+  setReferrer(tabId, rawReferer) {
+    let origin;
+    let host;
+    try {
+      const url = new URL(rawReferer);
+      if (url.protocol !== "http:" && url.protocol !== "https:") return;
+      host = cleanHostname(url.hostname);
+      if (!host) return;
+      origin = `${url.protocol}//${host}${url.port ? `:${url.port}` : ""}`;
+    } catch {
+      return;
+    }
+    const existing = this.referrers.get(tabId);
+    if (existing && this.now() - existing.t <= REFERRER_TTL_MS) return; // keep the first hop's referrer
+    this.referrers.set(tabId, { origin, host, t: this.now() });
   }
 
   /** The visit is over (settled, navigated away, or tab closed). Safe to call twice. */
@@ -116,6 +181,7 @@ export class PageSessions {
   /** The tab was closed: finish its page and forget anything waiting for it. */
   async closeTab(tabId) {
     this.pending.delete(tabId);
+    this.referrers.delete(tabId);
     await this.finalize(tabId);
   }
 
@@ -140,7 +206,17 @@ export class PageSessions {
       if (t.fp) entry.known_fingerprinter = true;
       return entry;
     });
-    return { trackers_checked: true, third_party_requests: Math.min(page.thirdParty, MAX_COUNT), trackers };
+    const cookies = page.cookies ?? { first: {}, third: {}, tracker: {} };
+    return {
+      trackers_checked: true,
+      third_party_requests: Math.min(page.thirdParty, MAX_COUNT),
+      trackers,
+      cookies: {
+        first_party: Object.keys(cookies.first).length,
+        third_party: Object.keys(cookies.third).length,
+        by_trackers: Object.keys(cookies.tracker).length,
+      },
+    };
   }
 
   // ---- internals ----------------------------------------------------------
@@ -155,6 +231,24 @@ export class PageSessions {
     if (hit && !page.trackers[hit.domain] && Object.keys(page.trackers).length < MAX_TRACKERS) {
       page.trackers[hit.domain] = { category: hit.category, company: hit.company, fp: hit.knownFingerprinter };
     }
+  }
+
+  #recordCookies(page, host, keys) {
+    const site = this.psl.registrableDomain(host) ?? host;
+    const firstParty = site === page.site;
+    const bucket = firstParty ? page.cookies.first : page.cookies.third;
+    const isTracker = !firstParty && this.trackers.classify(host) !== null;
+    for (const key of keys) {
+      if (Object.keys(bucket).length < MAX_COOKIE_KEYS) bucket[key] = 1;
+      if (isTracker && Object.keys(page.cookies.tracker).length < MAX_COOKIE_KEYS) page.cookies.tracker[key] = 1;
+    }
+  }
+
+  #hold(tabId, item) {
+    const t = this.now();
+    const fresh = (this.pending.get(tabId) ?? []).filter((r) => t - r.t <= PENDING_TTL_MS);
+    fresh.push({ ...item, t });
+    this.pending.set(tabId, fresh.slice(-PENDING_MAX));
   }
 
   #arm(tabId, page) {

@@ -57,8 +57,11 @@ class TrackerSeen(StrictModel):
 
 
 class CookieCounts(StrictModel):
-    first_party: Count = 0
-    third_party: Count = 0
+    """Cookies set during the visit (counted from Set-Cookie headers), never names or values."""
+
+    first_party: Count = 0  # set by the page's own site
+    third_party: Count = 0  # set by other sites
+    by_trackers: Count = 0  # of the third-party ones, how many came from known trackers
 
 
 class FingerprintingCounts(StrictModel):
@@ -122,10 +125,12 @@ class ScanOut(BaseModel):
     observed_at: datetime
     third_party_requests: int = 0
     tracker_count: int = 0
+    third_party_cookies: int = 0
     trackers_checked: bool = False
 
 
 class ScanDetail(ScanOut):
+    referrer_origin: str | None = None
     signals: Signals
 
 

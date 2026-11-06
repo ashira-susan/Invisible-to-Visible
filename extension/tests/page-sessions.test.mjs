@@ -195,3 +195,99 @@ test("closing a tab finishes its page and forgets waiting requests", async () =>
   assert.equal(finished.length, 1);
   assert.equal(sessions.pending.size, 0);
 });
+
+
+// ---- M2b: cookies and referrer --------------------------------------------------
+
+test("cookies are counted per visit, split into the site's own and other sites'", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, "https://www.shop.example/");
+  sessions.addCookies(1, "https://www.shop.example/", ["sid=1; Path=/", "cart=2; Path=/"]);
+  sessions.addCookies(1, "https://api.shop.example/x", ["token=3"]);          // same site, different host
+  sessions.addCookies(1, "https://px.ads.test/collect", ["uid=9; Max-Age=999"]); // known tracker
+  sessions.addCookies(1, "https://other.example/", ["o=1"]);                  // other site, not a tracker
+  await sessions.finalize(1);
+  const { cookies } = PageSessions.toSignals(finished[0]);
+  assert.deepEqual(cookies, { first_party: 3, third_party: 2, by_trackers: 1 });
+});
+
+test("the same cookie set twice is counted once; deleting a cookie is not setting one", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, "https://www.shop.example/");
+  sessions.addCookies(1, "https://www.shop.example/a", ["sid=1"]);
+  sessions.addCookies(1, "https://www.shop.example/b", ["sid=2"]);            // refreshed value, same cookie
+  sessions.addCookies(1, "https://www.shop.example/c", ["old=; Max-Age=0"]);  // deletion
+  await sessions.finalize(1);
+  assert.equal(PageSessions.toSignals(finished[0]).cookies.first_party, 1);
+});
+
+test("cookies from the page's own response (which arrives before the page starts) are counted", async () => {
+  const { sessions, finished, clock } = setup();
+  sessions.addCookies(1, "https://www.shop.example/", ["sid=1"]);
+  clock.t += 400;
+  await sessions.start(1, "https://www.shop.example/");
+  await sessions.finalize(1);
+  assert.equal(PageSessions.toSignals(finished[0]).cookies.first_party, 1);
+});
+
+test("cookie names and values are never stored or sent, only hashes", async () => {
+  const { sessions, finished, stored } = setup();
+  await sessions.start(1, "https://www.shop.example/");
+  sessions.addCookies(1, "https://www.shop.example/", ["super_secret_name=super_secret_value; Path=/"]);
+  await sessions.flush();
+  const text = JSON.stringify(stored.value) + JSON.stringify(finished);
+  assert.ok(!text.includes("super_secret"), "cookie name or value leaked into storage");
+  await sessions.finalize(1);
+  assert.ok(!JSON.stringify(PageSessions.toSignals(finished[0])).includes("super_secret"));
+});
+
+test("the referrer is kept as an origin only", async () => {
+  const { sessions } = setup();
+  sessions.setReferrer(1, "https://www.google.com/search?q=my+private+query&hl=en#top");
+  await sessions.start(1, "https://shop.example/");
+  assert.equal(sessions.pages.get(1).referrer, "https://www.google.com");
+  const text = JSON.stringify([...sessions.pages.values()]);
+  for (const leak of ["search", "private", "hl=en", "top"]) assert.ok(!text.includes(leak), `referrer leaked "${leak}"`);
+});
+
+test("a referrer from the same site is dropped", async () => {
+  const { sessions } = setup();
+  sessions.setReferrer(1, "https://www.shop.example/category/shoes");
+  await sessions.start(1, "https://shop.example/product/9");
+  assert.equal(sessions.pages.get(1).referrer, null);
+});
+
+test("no referrer means null, and an old referrer is not reused for a later page", async () => {
+  const { sessions, clock } = setup();
+  await sessions.start(1, "https://typed.example/");
+  assert.equal(sessions.pages.get(1).referrer, null);
+
+  sessions.setReferrer(1, "https://www.google.com/");
+  clock.t += 60_000; // far too long ago
+  await sessions.start(1, "https://late.example/");
+  assert.equal(sessions.pages.get(1).referrer, null);
+});
+
+test("a referrer is used once, by the page it was meant for", async () => {
+  const { sessions } = setup();
+  sessions.setReferrer(1, "https://news.example/front");
+  await sessions.start(1, "https://first.example/");
+  await sessions.start(1, "https://second.example/");
+  assert.equal(sessions.pages.get(1).referrer, null);
+});
+
+test("junk referrers are ignored", async () => {
+  const { sessions } = setup();
+  for (const bad of ["", "not a url", "ftp://x.example/", "https://[::1]/", "javascript:alert(1)"]) sessions.setReferrer(1, bad);
+  await sessions.start(1, "https://site.example/");
+  assert.equal(sessions.pages.get(1).referrer, null);
+});
+
+test("pages saved by the previous version still load", async () => {
+  const { sessions, stored, finished } = setup();
+  stored.value = { 3: { seq: 1, host: "old.example", https: true, site: "old.example", startedAt: 1_000_000, thirdParty: 2, trackers: {} } };
+  await sessions.load();
+  await sessions.finalize(3);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.deepEqual(signals.cookies, { first_party: 0, third_party: 0, by_trackers: 0 });
+});
