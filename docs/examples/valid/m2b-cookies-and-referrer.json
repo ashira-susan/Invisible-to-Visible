@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "observed_at": "2026-10-01T09:15:42Z",
+  "site": { "domain": "shop.example.org", "https": true, "referrer_origin": "https://www.google.com" },
+  "signals": {
+    "trackers_checked": true,
+    "third_party_requests": 31,
+    "trackers": [ { "domain": "doubleclick.net", "category": "advertising", "company": "Google" } ],
+    "cookies": { "first_party": 3, "third_party": 8, "by_trackers": 6 }
+  }
+}

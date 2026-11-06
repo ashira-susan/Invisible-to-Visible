@@ -128,7 +128,7 @@ def test_detail_returns_the_trackers(client):
     assert detail["domain"] == "shop.example.org"
     assert [t["domain"] for t in detail["signals"]["trackers"]] == ["doubleclick.net", "google-analytics.com"]
     assert detail["signals"]["trackers"][1]["known_fingerprinter"] is True
-    assert detail["signals"]["cookies"] == {"first_party": 0, "third_party": 0}
+    assert detail["signals"]["cookies"] == {"first_party": 0, "third_party": 0, "by_trackers": 0}
 
 
 def test_detail_of_another_installs_scan_is_not_found(client):
@@ -139,3 +139,39 @@ def test_detail_of_another_installs_scan_is_not_found(client):
 
 def test_detail_requires_install_id(client):
     assert client.get("/api/v1/scans/1").status_code == 401
+
+
+def _scan_with_cookies_and_referrer():
+    body = scan_body("shop.example.org")
+    body["site"]["referrer_origin"] = "https://www.google.com"
+    body["signals"] = {
+        "trackers_checked": True,
+        "third_party_requests": 31,
+        "cookies": {"first_party": 3, "third_party": 8, "by_trackers": 6},
+    }
+    return body
+
+
+def test_list_includes_third_party_cookie_count(client):
+    client.post("/api/v1/scans", json=_scan_with_cookies_and_referrer(), headers=headers())
+    scan = client.get("/api/v1/scans", headers=headers()).json()["scans"][0]
+    assert scan["third_party_cookies"] == 8
+
+
+def test_detail_returns_cookies_and_referrer(client):
+    created = client.post("/api/v1/scans", json=_scan_with_cookies_and_referrer(), headers=headers()).json()
+    detail = client.get(f"/api/v1/scans/{created['id']}", headers=headers()).json()
+    assert detail["referrer_origin"] == "https://www.google.com"
+    assert detail["signals"]["cookies"] == {"first_party": 3, "third_party": 8, "by_trackers": 6}
+
+
+def test_referrer_with_a_path_is_rejected(client):
+    body = _scan_with_cookies_and_referrer()
+    body["site"]["referrer_origin"] = "https://www.google.com/search?q=private"
+    assert client.post("/api/v1/scans", json=body, headers=headers()).status_code == 422
+
+
+def test_detail_without_referrer_is_null(client):
+    created = client.post("/api/v1/scans", json=scan_body(), headers=headers()).json()
+    detail = client.get(f"/api/v1/scans/{created['id']}", headers=headers()).json()
+    assert detail["referrer_origin"] is None

@@ -14,7 +14,7 @@
       { "domain": "doubleclick.net", "category": "advertising", "company": "Google" },
       { "domain": "unlisted-company.example", "category": "other" }
     ],
-    "cookies": { "first_party": 4, "third_party": 7 },
+    "cookies": { "first_party": 4, "third_party": 7, "by_trackers": 5 },
     "fingerprinting": { "canvas": 2, "webgl": 1, "audio": 0, "font": 0 },
     "geolocation_calls": 0
   }

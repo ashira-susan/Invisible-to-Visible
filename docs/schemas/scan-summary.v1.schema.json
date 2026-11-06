@@ -2,6 +2,7 @@
   "$defs": {
     "CookieCounts": {
       "additionalProperties": false,
+      "description": "Cookies set during the visit (counted from Set-Cookie headers), never names or values.",
       "properties": {
         "first_party": {
           "default": 0,
@@ -15,6 +16,13 @@
           "maximum": 100000,
           "minimum": 0,
           "title": "Third Party",
+          "type": "integer"
+        },
+        "by_trackers": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "By Trackers",
           "type": "integer"
         }
       },

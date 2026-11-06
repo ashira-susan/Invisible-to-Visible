@@ -40,6 +40,7 @@ def _to_out(row: Scan) -> ScanOut:
         observed_at=row.observed_at,
         third_party_requests=signals.get("third_party_requests", 0),
         tracker_count=len(signals.get("trackers", [])),
+        third_party_cookies=signals.get("cookies", {}).get("third_party", 0),
         trackers_checked=bool(signals.get("trackers_checked", False)),
     )
 
@@ -101,7 +102,11 @@ def get_scan(
     # Someone else's scan looks exactly like a missing one.
     if row is None or row.install_id != install_id:
         raise HTTPException(status_code=404, detail="Scan not found.")
-    return ScanDetail(**_to_out(row).model_dump(), signals=Signals.model_validate(row.signals or {}))
+    return ScanDetail(
+        **_to_out(row).model_dump(),
+        referrer_origin=row.referrer_origin,
+        signals=Signals.model_validate(row.signals or {}),
+    )
 
 
 @router.delete("/me", response_model=Deleted)

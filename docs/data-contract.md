@@ -9,7 +9,7 @@ The agreement between the browser extension (which observes) and the backend (wh
 1. **Summaries, not raw data.** The extension reduces what it sees on the device and sends only the summary below.
 2. **Strict by default.** Unknown fields are rejected. A URL, page title or cookie value cannot be sent by accident, because the backend answers `422`.
 3. **Identity is a header, not data.** Each install has a random UUIDv4, sent as `X-Install-ID`. It is not derived from the person or the machine.
-4. **Missing means zero, except for `trackers_checked`.** Everything under `signals` is optional. A missing count means none were seen. But `signals.trackers_checked` says whether anyone was looking: `false` means the user only allowed site names, so an empty tracker list is *unknown*, not *clean*.
+4. **Missing means zero, except for `trackers_checked`.** Everything under `signals` is optional. A missing count means none were seen. But `signals.trackers_checked` says whether request monitoring was on for the visit (trackers, cookies and the referrer all depend on it): `false` means the user only allowed site names, so an empty tracker list, a cookie count of zero or a missing referrer is *unknown*, not *clean*.
 5. **Evolving.** Adding an optional field stays on `schema_version: "1"`. Renaming, removing or changing the meaning of a field means `"2"`.
 
 ## Requests
@@ -17,8 +17,8 @@ The agreement between the browser extension (which observes) and the backend (wh
 | Method and path | Header | Purpose |
 |---|---|---|
 | `POST /api/v1/scans` | `X-Install-ID` | Store one page visit (body below). Returns `201 {id, domain}`. |
-| `GET /api/v1/scans?limit=100` | `X-Install-ID` | This install's visits, newest first (limit 1 to 500), with `third_party_requests`, `tracker_count` and `trackers_checked` for each. |
-| `GET /api/v1/scans/{id}` | `X-Install-ID` | One visit with its full `signals`. `404` if it is not yours (indistinguishable from missing). |
+| `GET /api/v1/scans?limit=100` | `X-Install-ID` | This install's visits, newest first (limit 1 to 500), with `third_party_requests`, `tracker_count`, `third_party_cookies` and `trackers_checked` for each. |
+| `GET /api/v1/scans/{id}` | `X-Install-ID` | One visit with its `referrer_origin` and full `signals`. `404` if it is not yours (indistinguishable from missing). |
 | `DELETE /api/v1/me` | `X-Install-ID` | Delete everything stored for this install. |
 | `GET /api/v1/health` | none | `{status, version}` |
 
@@ -32,7 +32,7 @@ Errors: `401` header missing, `400` header is not a UUIDv4, `422` body breaks th
 | `observed_at` | string (ISO 8601) | yes | must include a timezone; not in the future | M1 |
 | `site.domain` | string | yes | lowercase hostname only, 1 to 253 chars; no scheme, path, port, query or trailing dot | M1 |
 | `site.https` | boolean | yes | page used HTTPS | M1 |
-| `site.referrer_origin` | string or null | no | origin only, such as `https://www.google.com`; never a path | M2b |
+| `site.referrer_origin` | string or null | no | the site the user arrived from: origin only, such as `https://www.google.com`; never a path. `null` for typed addresses, bookmarks, the same site, or when the previous site hides it. | M2b |
 | `signals.trackers_checked` | boolean | no | `true` when tracker detection was on for this visit; default `false` | M2a |
 | `signals.third_party_requests` | integer | no | requests to other sites (a different registrable domain than the page), 0 to 100000 | M2a |
 | `signals.trackers[]` | object | no | known trackers contacted, at most 200, one entry per tracker domain | M2a |
@@ -78,7 +78,9 @@ More examples, valid and invalid, live in `docs/examples/`. The tests run every 
 1. A top-level page is committed in a tab: the extension starts a record holding only the hostname and the HTTPS flag.
 2. While the page loads, each request it makes to another site is looked at once: the host is compared with the page's host using the Public Suffix List. A different registrable domain counts as a third-party request, and the host is matched against the bundled tracker list.
 3. Only a count and the matched tracker entries are kept. The addresses of the requests are never stored.
-4. About 10 seconds after the page loads, when you leave the page, or when the tab closes (whichever is first), the summary is sent. Trackers that appear later are not counted.
+4. **Cookies (M2b):** each `Set-Cookie` response header is reduced on the spot to a one-way hash of "which host set which cookie name", and the value is discarded. Counting unique hashes gives the numbers in `signals.cookies`, so a cookie refreshed ten times counts once and a deletion (`Max-Age=0` or a past `Expires`) counts as nothing. The hashes stay on the device and are never sent. Cookies written by a page's own scripts are **not** counted yet (M2c).
+5. **Referrer (M2b):** the `Referer` header of the page's own request is cut down to its origin straight away. It is dropped if it is the same site as the page, or older than 30 seconds.
+6. About 10 seconds after the page loads, when you leave the page, or when the tab closes (whichever is first), the summary is sent. Trackers that appear later are not counted.
 
 Tracker detection needs the user's choice (`fullAccess`) **and** Chrome's all-sites access. Without either, visits are sent with `trackers_checked: false`.
 
@@ -95,3 +97,6 @@ Full URLs, paths, query strings, fragments, page titles or content, cookie names
 | D-3 | How long are visits kept? The plan assumes 90 days. | Open, decide in M3. |
 | D-4 | When is all-sites access requested? | **Decided (M2a):** at consent time, as an optional permission, not at install. |
 | D-5 | When is a visit's summary sent? | **Decided (M2a):** about 10 seconds after load, on leaving the page, or when the tab closes. |
+| D-6 | How are cookies counted? | **Decided (M2b):** from `Set-Cookie` headers during the visit, de-duplicated by a one-way hash. No `cookies` permission, no names or values kept. |
+| D-7 | What is kept of the referrer? | **Decided (M2b):** the origin only; dropped when it is the same site. |
+| D-8 | Does this need new consent? | **Decided (M2b):** yes. Consent version 3 asks again, because new things are collected. |
