@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Frames test</title></head>
+<body>
+<h1>Frames test</h1>
+<p>Expected on the dashboard: <strong>1</strong> canvas read-back from the srcdoc iframe. The about:blank iframe is created by the page and then given a script: depending on how Chrome injects into such frames it may add one more (<strong>2</strong> in total) or nothing; <em>report which you see</em>, it is a real-Chrome check. Cookies written inside either frame have no trustworthy host (<code>sender.url</code> is <code>about:srcdoc</code> or <code>about:blank</code>), so expected cookies: <strong>0</strong>.</p>
+<iframe id="a" srcdoc="<script>const c=document.createElement('canvas');const x=c.getContext('2d');x.fillText('srcdoc',2,12);c.toDataURL();document.cookie='frame_srcdoc=1';<\/script>"></iframe>
+<iframe id="b"></iframe>
+<script>
+const doc = document.getElementById("b").contentDocument;
+const s = doc.createElement("script");
+s.textContent = "const c=document.createElement('canvas');const x=c.getContext('2d');x.fillText('blank',2,12);c.toDataURL();document.cookie='frame_blank=1';";
+doc.body.appendChild(s);
+</script>
+</body>
+</html>

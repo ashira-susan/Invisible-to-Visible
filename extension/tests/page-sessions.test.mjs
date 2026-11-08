@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { PageSessions, MAX_TRACKERS } from "../lib/page-sessions.js";
 import { PublicSuffixList } from "../lib/psl.js";
 import { TrackerList } from "../lib/trackers.js";
+import { cookieKey } from "../lib/cookies.js";
 
 const psl = new PublicSuffixList(readFileSync(new URL("../data/public_suffix_list.dat", import.meta.url), "utf8"));
 const trackers = new TrackerList({
@@ -290,4 +291,238 @@ test("pages saved by the previous version still load", async () => {
   await sessions.finalize(3);
   const signals = PageSessions.toSignals(finished[0]);
   assert.deepEqual(signals.cookies, { first_party: 0, third_party: 0, by_trackers: 0 });
+});
+
+
+// ---- M2c: what the page-world hooks report ---------------------------------------
+// Everything below arrives from a web page and is untrusted.
+
+const inpage = (extra = {}) => ({ type: "itv-inpage", v: 1, ...extra });
+const SHOP = "https://www.shop.example/";
+
+test("page-world counts fill the fingerprinting and location fields", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 2, webgl: 1, font: 1, geo: 3 }));
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 1, audio: 4 }));
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.deepEqual(signals.fingerprinting, { canvas: 3, webgl: 1, audio: 4, font: 1 });
+  assert.equal(signals.geolocation_calls, 3);
+});
+
+test("a page that reports nothing gives zeros", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.deepEqual(signals.fingerprinting, { canvas: 0, webgl: 0, audio: 0, font: 0 });
+  assert.equal(signals.geolocation_calls, 0);
+});
+
+test("counts stop at the contract's maximum however much is reported", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  for (let i = 0; i < 300; i++) sessions.addInpage(1, 0, SHOP, inpage({ canvas: 1e9, geo: 1000 }));
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.equal(signals.fingerprinting.canvas, 100_000);
+  assert.equal(signals.geolocation_calls, 100_000);
+});
+
+test("a script-set cookie seen in a header too is counted once; a different name adds one", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  sessions.addCookies(1, SHOP, ["sid=1; Path=/"]);                              // header
+  sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["sid"] }));                  // script, same host and name
+  sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["sid", "theme"] }));         // sid again, theme is new
+  await sessions.finalize(1);
+  assert.deepEqual(PageSessions.toSignals(finished[0]).cookies, { first_party: 2, third_party: 0, by_trackers: 0 });
+});
+
+test("the frame's host comes from sender.url, never from the message", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  // The page claims to be evil.example and also to be a tracker; both claims are ignored.
+  sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["a"], host: "evil.example", domain: "ads.test", url: "https://ads.test/" }));
+  await sessions.finalize(1);
+  assert.deepEqual(PageSessions.toSignals(finished[0]).cookies, { first_party: 1, third_party: 0, by_trackers: 0 });
+  const keys = Object.keys(finished[0].cookies.first);
+  assert.deepEqual(keys, [cookieKey("www.shop.example", "a")]);
+});
+
+test("a script cookie from another site's frame is third party, and a tracker's frame counts as a tracker", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  sessions.addInpage(1, 3, "https://px.ads.test/frame.html", inpage({ cookies: ["uid"], canvas: 1 }));
+  sessions.addInpage(1, 4, "https://other.example/embed", inpage({ cookies: ["o"] }));
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.deepEqual(signals.cookies, { first_party: 0, third_party: 2, by_trackers: 1 });
+  assert.equal(signals.fingerprinting.canvas, 1);
+});
+
+test("frames with no trustworthy host (about:blank, srcdoc, data:) still count calls but their cookies are dropped", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  for (const url of ["about:blank", "about:srcdoc", "data:text/html,x", "", undefined, 42, "http://127.0.0.1:8000/app/"]) {
+    sessions.addInpage(1, 2, url, inpage({ canvas: 1, cookies: ["sneaky"] }));
+  }
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.equal(signals.fingerprinting.canvas, 7);
+  assert.deepEqual(signals.cookies, { first_party: 0, third_party: 0, by_trackers: 0 });
+});
+
+test("a late message from the page the tab just left is dropped; a subframe's is not", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  sessions.addInpage(1, 0, "https://old.example/", inpage({ canvas: 5 }));        // top frame of another page
+  sessions.addInpage(1, 7, "https://old.example/embed", inpage({ canvas: 2 }));   // a subframe may be anyone
+  await sessions.finalize(1);
+  assert.equal(PageSessions.toSignals(finished[0]).fingerprinting.canvas, 2);
+});
+
+test("messages that arrive just before the page starts are kept, old ones are not", async () => {
+  const { sessions, finished, clock } = setup();
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 2, cookies: ["early"] }));
+  clock.t += 4_000; // older than the 3 s window
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 1 }));
+  clock.t += 400;
+  await sessions.start(1, SHOP);
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.equal(signals.fingerprinting.canvas, 1); // only the fresh one
+  assert.equal(signals.cookies.first_party, 0);   // the stale one carried the cookie
+});
+
+test("early page-world messages for a page that never starts are forgotten when the tab closes", async () => {
+  const { sessions } = setup();
+  sessions.addInpage(5, 0, SHOP, inpage({ canvas: 2, cookies: ["x"] }));
+  assert.equal(sessions.pending.size, 1);
+  await sessions.closeTab(5);
+  assert.equal(sessions.pending.size, 0);
+});
+
+test("cookie names are hashed on arrival: they are never held, stored or sent", async () => {
+  const { sessions, finished, stored } = setup();
+  sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["unique_pending_name"] }));      // held before the page starts
+  assert.ok(!JSON.stringify([...sessions.pending.values()]).includes("unique_pending_name"), "name held in the pending buffer");
+  await sessions.start(1, SHOP);
+  sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["unique_live_name"], canvas: 1 }));
+  await sessions.flush();
+  assert.ok(!JSON.stringify(stored.value).includes("unique_"), "name reached session storage");
+  await sessions.finalize(1);
+  const everything = JSON.stringify(finished) + JSON.stringify(PageSessions.toSignals(finished[0]));
+  assert.ok(!everything.includes("unique_"), "name reached the page record or the summary");
+});
+
+test("garbage from the page changes nothing", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  const junk = [null, undefined, 7, "x", [], {}, inpage({ canvas: -3, webgl: "9", audio: 0.5 }), { type: "other", v: 1, canvas: 9 }, inpage({ v: 9, canvas: 9 })];
+  for (const raw of junk) sessions.addInpage(1, 0, SHOP, raw);
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.deepEqual(signals.fingerprinting, { canvas: 0, webgl: 0, audio: 0, font: 0 });
+  assert.equal(signals.geolocation_calls, 0);
+});
+
+test("a flood of messages and cookie names stays inside every cap", async () => {
+  const { sessions, finished } = setup();
+  await sessions.start(1, SHOP);
+  for (let i = 0; i < 4_000; i++) {
+    const cookies = Array.from({ length: 100 }, (_, k) => `flood_${i}_${k}`);
+    sessions.addInpage(1, 0, SHOP, inpage({ canvas: 5000, webgl: 5000, audio: 5000, font: 5000, geo: 5000, cookies }));
+  }
+  await sessions.finalize(1);
+  const signals = PageSessions.toSignals(finished[0]);
+  for (const n of Object.values(signals.fingerprinting)) assert.ok(n <= 100_000);
+  assert.ok(signals.geolocation_calls <= 100_000);
+  assert.ok(signals.cookies.first_party <= 2_000);
+});
+
+test("a page saved by an older version (no page-world fields) still loads and finishes", async () => {
+  const { sessions, finished, stored } = setup();
+  stored.value = { 3: { seq: 1, host: "old.example", https: true, site: "old.example", startedAt: 1_000_000, thirdParty: 0, trackers: {}, cookies: { first: {}, third: {}, tracker: {} }, referrer: null } };
+  await sessions.load();
+  await sessions.finalize(3);
+  const signals = PageSessions.toSignals(finished[0]);
+  assert.deepEqual(signals.fingerprinting, { canvas: 0, webgl: 0, audio: 0, font: 0 });
+  assert.equal(signals.geolocation_calls, 0);
+});
+
+// ---- the previous page is still being sent when the next one starts -----------------
+
+test("requests, cookies and page-script reports that arrive while the previous page is still being sent reach the new page", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const finished = [];
+  let first = true;
+  const { sessions } = setup({
+    onFinalize: async (page) => {
+      if (first) { first = false; await gate; } // the old page's summary is slow to send
+      finished.push(page);
+    },
+  });
+
+  await sessions.start(1, "https://old.example/");
+  const starting = sessions.start(1, SHOP); // the tab navigates; the old page is still being handed over
+  await Promise.resolve();
+  await Promise.resolve();
+
+  sessions.addRequest(1, "https://px.ads.test/t.gif");
+  sessions.addCookies(1, SHOP, ["sid=1"]);
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 4, geo: 2, cookies: ["theme"] }));
+
+  release();
+  await starting;
+  await sessions.finalize(1);
+
+  const page = finished.find((p) => p.host === "www.shop.example");
+  const signals = PageSessions.toSignals(page);
+  assert.equal(signals.third_party_requests, 1);
+  assert.equal(signals.trackers.length, 1);
+  assert.equal(signals.fingerprinting.canvas, 4);
+  assert.equal(signals.geolocation_calls, 2);
+  assert.equal(signals.cookies.first_party, 2); // sid from the header, theme from a script
+  assert.equal(finished.find((p) => p.host === "old.example").fp.canvas, 0); // none of it landed on the old page
+});
+
+test("a held report from another site's top frame is not given to the page that starts next", async () => {
+  const { sessions, finished } = setup();
+  sessions.addInpage(1, 0, "https://old.example/", inpage({ canvas: 5 }));       // the page we just left
+  sessions.addInpage(1, 9, "https://embed.example/", inpage({ canvas: 2 }));     // some subframe: kept
+  await sessions.start(1, SHOP);
+  await sessions.finalize(1);
+  assert.equal(PageSessions.toSignals(finished[0]).fingerprinting.canvas, 2);
+});
+
+// ---- timers: Chrome only accepts setTimeout/clearTimeout called as plain functions -----
+
+test("timers are called as plain functions, never as methods of the session object", async () => {
+  const calls = [];
+  const strict = (name) => function (...args) {
+    // `this` is undefined for a plain call; a method call would make it the PageSessions object
+    if (this !== undefined) throw new TypeError("Illegal invocation");
+    calls.push(name);
+    return calls.length;
+  };
+  const { sessions } = setup({ schedule: strict("schedule"), cancel: strict("cancel") });
+  await sessions.start(1, SHOP);                         // arms the settle timer and the save timer
+  sessions.addRequest(1, "https://other.example/x.js");  // asks for a save
+  await sessions.flush();                                // cancels the save timer
+  await sessions.start(1, "https://www.other.example/"); // ends the first page: cancels its settle timer
+  assert.ok(calls.includes("schedule"));
+  assert.ok(calls.includes("cancel"));
+});
+
+test("a page saved before the worker restarted can be loaded again and keeps its page-script counts", async () => {
+  const strictSchedule = function (fn, ms) { if (this !== undefined) throw new TypeError("Illegal invocation"); return 1; };
+  const { sessions, stored, finished } = setup({ schedule: strictSchedule });
+  stored.value = { 4: { seq: 2, host: "kept.example", https: true, site: "kept.example", startedAt: 1_000_000, thirdParty: 1, trackers: {}, cookies: { first: {}, third: {}, tracker: {} }, referrer: null, fp: { canvas: 6, webgl: 0, audio: 0, font: 0 }, geo: 1 } };
+  await sessions.load();
+  sessions.addInpage(4, 0, "https://kept.example/", inpage({ canvas: 1 }));
+  await sessions.finalize(4);
+  assert.equal(PageSessions.toSignals(finished[0]).fingerprinting.canvas, 7);
 });

@@ -26,7 +26,7 @@ document.getElementById("allow-full").addEventListener("click", async () => {
   }
   await saveConsent(granted);
   result.textContent = granted
-    ? "Recording is on, with tracker detection. You can pause it from the toolbar icon. You can close this tab."
+    ? "Recording is on, with tracker detection and page-script counts. Reload any tabs that are already open so the page script applies to them. You can pause from the toolbar icon, and close this tab."
     : "Chrome's access wasn't granted, so only site names are recorded. You can try again from this page.";
 });
 

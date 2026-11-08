@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "observed_at": "2026-11-01T10:30:00.000Z",
+  "site": {
+    "domain": "testpage.example",
+    "https": true,
+    "referrer_origin": null
+  },
+  "signals": {
+    "trackers_checked": true,
+    "third_party_requests": 4,
+    "trackers": [
+      { "domain": "doubleclick.net", "category": "advertising", "company": "Google" }
+    ],
+    "cookies": { "first_party": 2, "third_party": 1, "by_trackers": 1 },
+    "fingerprinting": { "canvas": 3, "webgl": 2, "audio": 1, "font": 1 },
+    "geolocation_calls": 1
+  }
+}

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ITV test pages</title>
+  <style>body{font:16px/1.5 system-ui;max-width:42rem;margin:2rem auto;padding:0 1rem}code{background:#eee;padding:0 .25em}</style>
+</head>
+<body>
+  <h1>Invisible to Visible: test pages</h1>
+  <p>Serve this folder with <code>python -m http.server 8001</code> from <code>testpages/</code> and open <code>http://localhost:8001/</code>.
+  Each page triggers one kind of call a known number of times. Open each page in a <em>freshly loaded</em> tab, wait about 15 seconds, then expand its row in the dashboard.</p>
+  <ul>
+    <li><a href="hooks.html">hooks.html</a>: canvas, WebGL, audio, fonts, location</li>
+    <li><a href="cookies.html">cookies.html</a>: cookies set by scripts (and a name that repeats)</li>
+    <li><a href="frames.html">frames.html</a>: hooks inside a srcdoc iframe and an about:blank iframe</li>
+    <li><a href="hostile.html">hostile.html</a>: floods and forged messages (counts must stay within the caps)</li>
+    <li><a href="quiet.html">quiet.html</a>: calls nothing; should show no calls observed</li>
+  </ul>
+</body>
+</html>

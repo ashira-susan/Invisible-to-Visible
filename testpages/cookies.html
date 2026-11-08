@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Cookies test</title></head>
+<body>
+<h1>Cookies test</h1>
+<p>Expected on the dashboard: <strong>4</strong> cookies in total, all set by the site itself:
+<code>itv_a</code> (written three times, counts once), <code>itv_b</code>, <code>itv_c</code> and <code>itv_gone</code>
+(written once, then deleted; the deleting write adds nothing). A write without a name (<code>no-equals-sign</code>) is ignored.</p>
+<p>To check de-duplication with headers: run <code>python serve_cookies.py</code> from this folder instead of http.server; it also sets <code>itv_a</code> in the response header, and the total must stay <strong>4</strong>, not 5.</p>
+<script>
+document.cookie = "itv_a=1; path=/";
+document.cookie = "itv_a=2; path=/";
+document.cookie = "itv_a=3; path=/";
+document.cookie = "itv_b=1; path=/; max-age=3600";
+document.cookie = "itv_c=1; path=/; expires=" + new Date(Date.now() + 86400000).toUTCString();
+document.cookie = "itv_gone=1; path=/";
+document.cookie = "itv_gone=; path=/; max-age=0";
+document.cookie = "no-equals-sign";
+</script>
+</body>
+</html>

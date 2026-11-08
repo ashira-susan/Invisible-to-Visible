@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Hooks test</title></head>
+<body>
+<h1>Hooks test</h1>
+<p>Expected on the dashboard (about 15 seconds after load):</p>
+<ul>
+  <li>canvas read-backs: <strong>3</strong> (text drawn, then toDataURL, getImageData, toBlob). A second canvas that never had text drawn is read back too and must NOT count.</li>
+  <li>WebGL: <strong>3</strong> (unmasked vendor, unmasked renderer, one readPixels) if WebGL is available</li>
+  <li>offline audio renders: <strong>1</strong></li>
+  <li>bursts of font measuring: <strong>2</strong> (one measureText burst, one document.fonts.check burst); a slow, spread-out run of calls must NOT count</li>
+  <li>location requests: <strong>2</strong> (Chrome may show a permission prompt: choose Block; the call is still counted)</li>
+</ul>
+<pre id="log"></pre>
+<script>
+const log = (t) => { document.getElementById("log").textContent += t + "\n"; };
+
+// canvas
+const c = document.createElement("canvas"); c.width = 200; c.height = 40;
+const ctx = c.getContext("2d");
+ctx.font = "16px Arial"; ctx.fillText("Cwm fjordbank glyphs vext quiz", 4, 24);
+c.toDataURL(); ctx.getImageData(0, 0, 10, 10); c.toBlob(() => {});
+const plain = document.createElement("canvas"); plain.getContext("2d").fillRect(0, 0, 5, 5);
+plain.toDataURL(); // no text drawn: not counted
+log("canvas done");
+
+// webgl
+try {
+  const gl = document.createElement("canvas").getContext("webgl");
+  if (gl) {
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    if (ext) { gl.getParameter(ext.UNMASKED_VENDOR_WEBGL); gl.getParameter(ext.UNMASKED_RENDERER_WEBGL); }
+    gl.getParameter(gl.VERSION); // ordinary query: not counted
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+    log("webgl done (extension " + (ext ? "available" : "missing") + ")");
+  } else log("webgl not available");
+} catch (e) { log("webgl error " + e); }
+
+// audio
+try {
+  const oac = new OfflineAudioContext(1, 4410, 44100);
+  const osc = oac.createOscillator(); osc.connect(oac.destination); osc.start();
+  oac.startRendering().then(() => log("audio done"));
+} catch (e) { log("audio error " + e); }
+
+// fonts: burst of 25 calls over 25 different fonts, then a slow spread of calls
+const m = document.createElement("canvas").getContext("2d");
+for (let i = 0; i < 25; i++) { m.font = "14px FontNumber" + i; m.measureText("mmmmmmmmmmlli"); }
+for (let i = 0; i < 25; i++) document.fonts.check("14px CheckFont" + i);
+let slow = 0;
+const timer = setInterval(() => { m.font = "14px Slow" + slow; m.measureText("x"); if (++slow >= 25) { clearInterval(timer); log("slow font calls done (not counted)"); } }, 150);
+log("fonts done");
+
+// location
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(() => {}, () => {});
+  const id = navigator.geolocation.watchPosition(() => {}, () => {});
+  setTimeout(() => navigator.geolocation.clearWatch(id), 500);
+  log("geolocation done");
+}
+</script>
+</body>
+</html>
