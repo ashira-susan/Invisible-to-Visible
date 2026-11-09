@@ -22,7 +22,7 @@ async function render() {
     $("status").textContent = "Paused. Nothing is being recorded.";
     $("toggle").textContent = "Resume recording";
   } else if (trackers) {
-    $("status").textContent = "Recording site names and which known trackers each page contacts.";
+    $("status").textContent = "Recording site names, which known trackers each page contacts, and what page scripts do (canvas, WebGL, audio, fonts, location, cookies).";
     $("toggle").textContent = "Pause recording";
   } else {
     $("status").textContent = "Recording site names only.";

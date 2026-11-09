@@ -5,6 +5,7 @@
 import { cleanHostname, siteFromUrl } from "./summary.js";
 import { parseSetCookie, cookieKey } from "./cookies.js";
 import { SETTLE_MS } from "./config.js";
+import { sanitizeInpage } from "./inpage.js";
 
 export const MAX_TRACKERS = 200;
 const MAX_COUNT = 100_000;
@@ -27,8 +28,10 @@ export class PageSessions {
     this.onFinalize = onFinalize;
     this.settleMs = settleMs;
     this.now = now;
-    this.schedule = schedule;
-    this.cancel = cancel;
+    // setTimeout and clearTimeout must be called as plain functions. Stored on this object
+    // and called as this.schedule(...), Chrome refuses them ("Illegal invocation").
+    this.schedule = (fn, ms) => schedule(fn, ms);
+    this.cancel = (id) => cancel(id);
 
     this.pages = new Map(); // tabId -> page
     this.pending = new Map(); // tabId -> [item]  requests and cookies seen just before the page started
@@ -43,6 +46,8 @@ export class PageSessions {
     for (const [tabId, page] of Object.entries(saved)) {
       page.cookies ??= { first: {}, third: {}, tracker: {} }; // pages saved by an older version
       page.referrer ??= null;
+      page.fp ??= { canvas: 0, webgl: 0, audio: 0, font: 0 };
+      page.geo ??= 0;
       this.pages.set(Number(tabId), page);
       this.seq = Math.max(this.seq, page.seq ?? 0);
       this.#arm(Number(tabId), page);
@@ -51,16 +56,24 @@ export class PageSessions {
 
   /** A top-level page was committed in a tab. */
   async start(tabId, rawUrl) {
-    // Requests seen a moment ago belong to the page that is starting now, not the old one.
+    // Leaving the previous page ends its visit. finalize() removes that page at once
+    // (before its first await), so the tab has no "current page" from here on and
+    // the new one can take over without waiting for the old summary to be sent. This
+    // matters: sending can take a while, and the new page's first requests and
+    // page-script reports arrive in that time. They must reach the new page.
+    const finishing = this.finalize(tabId);
+
+    // Read what was seen a moment ago only now, after the old page is gone.
     const early = this.pending.get(tabId) ?? [];
     this.pending.delete(tabId);
     const arrivedFrom = this.referrers.get(tabId);
     this.referrers.delete(tabId);
 
-    await this.finalize(tabId); // leaving the previous page ends its visit
-
     const site = siteFromUrl(rawUrl);
-    if (!site) return;
+    if (!site) {
+      await finishing;
+      return;
+    }
 
     const page = {
       seq: ++this.seq,
@@ -72,13 +85,19 @@ export class PageSessions {
       trackers: {}, // listed domain -> { category, company, fp }
       cookies: { first: {}, third: {}, tracker: {} }, // hashed "host + cookie name" keys, nothing readable
       referrer: null, // origin only, e.g. https://www.google.com
+      fp: { canvas: 0, webgl: 0, audio: 0, font: 0 }, // calls observed by the page-world hooks (best effort)
+      geo: 0,
     };
     this.pages.set(tabId, page);
 
     for (const item of early) {
       if (page.startedAt - item.t > PENDING_TTL_MS) continue;
       if (item.kind === "cookies") this.#recordCookies(page, item.host, item.keys);
-      else this.#record(page, item.host);
+      else if (item.kind === "inpage") {
+        // A late report from the page we just left: its top frame is another site.
+        if (item.frameId === 0 && item.host !== null && item.host !== page.host) continue;
+        this.#recordInpage(page, item);
+      } else this.#record(page, item.host);
     }
 
     // Arriving from another site is worth knowing; arriving from the same site is not.
@@ -89,6 +108,7 @@ export class PageSessions {
 
     this.#arm(tabId, page);
     this.#persistSoon();
+    await finishing; // callers still wait until the previous page has been handed over
   }
 
   /** A sub-resource request (script, image, frame, ...) was made by a tab. */
@@ -141,6 +161,39 @@ export class PageSessions {
       return;
     }
     this.#hold(tabId, { kind: "cookies", host, keys });
+  }
+
+  /**
+   * The page-world hooks reported something. EVERYTHING in `raw` came from the web page
+   * and is untrusted: it is validated and clamped by sanitizeInpage(), and the message
+   * has no say about which site it is from. `senderUrl` is sender.url, which Chrome
+   * fills in; the host used for cookie hashing comes only from there.
+   *
+   * Cookie names are hashed right here, before anything is held or stored, so only
+   * hashes ever sit in memory or in session storage.
+   */
+  addInpage(tabId, frameId, senderUrl, raw) {
+    const clean = sanitizeInpage(raw);
+    if (!clean) return;
+
+    // The frame's host, or null for about:blank / srcdoc / anything else with no
+    // trustworthy host. Without a host, its cookie names are dropped (counts still count).
+    const site = siteFromUrl(typeof senderUrl === "string" ? senderUrl : "");
+    const host = site ? site.domain : null;
+
+    const page = this.pages.get(tabId);
+    // A late message from the page we just left must not land on the new page.
+    if (page && frameId === 0 && host !== null && host !== page.host) return;
+
+    const keys = host ? clean.names.map((name) => cookieKey(host, name)) : [];
+    const item = { kind: "inpage", frameId, host, keys, fp: clean.fingerprinting, geo: clean.geolocation };
+
+    if (page) {
+      this.#recordInpage(page, item);
+      this.#persistSoon();
+      return;
+    }
+    this.#hold(tabId, item);
   }
 
   /**
@@ -207,6 +260,7 @@ export class PageSessions {
       return entry;
     });
     const cookies = page.cookies ?? { first: {}, third: {}, tracker: {} };
+    const fp = page.fp ?? { canvas: 0, webgl: 0, audio: 0, font: 0 };
     return {
       trackers_checked: true,
       third_party_requests: Math.min(page.thirdParty, MAX_COUNT),
@@ -216,6 +270,13 @@ export class PageSessions {
         third_party: Object.keys(cookies.third).length,
         by_trackers: Object.keys(cookies.tracker).length,
       },
+      fingerprinting: {
+        canvas: Math.min(fp.canvas, MAX_COUNT),
+        webgl: Math.min(fp.webgl, MAX_COUNT),
+        audio: Math.min(fp.audio, MAX_COUNT),
+        font: Math.min(fp.font, MAX_COUNT),
+      },
+      geolocation_calls: Math.min(page.geo ?? 0, MAX_COUNT),
     };
   }
 
@@ -242,6 +303,16 @@ export class PageSessions {
       if (Object.keys(bucket).length < MAX_COOKIE_KEYS) bucket[key] = 1;
       if (isTracker && Object.keys(page.cookies.tracker).length < MAX_COOKIE_KEYS) page.cookies.tracker[key] = 1;
     }
+  }
+
+  #recordInpage(page, item) {
+    for (const name of ["canvas", "webgl", "audio", "font"]) {
+      page.fp[name] = Math.min(page.fp[name] + item.fp[name], MAX_COUNT);
+    }
+    page.geo = Math.min(page.geo + item.geo, MAX_COUNT);
+    // Script-set cookies go into the same hashed buckets as header cookies, so a cookie
+    // seen both ways (same host, same name) is counted once.
+    if (item.host && item.keys.length > 0) this.#recordCookies(page, item.host, item.keys);
   }
 
   #hold(tabId, item) {

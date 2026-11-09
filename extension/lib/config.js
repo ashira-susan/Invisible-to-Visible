@@ -6,7 +6,9 @@ export const API_BASE = "http://127.0.0.1:8000";
 //   1 = site names only
 //   2 = site names + which known tracking companies each page contacts (needs all-sites access)
 //   3 = also: how many cookies each page sets, and the site you arrived from (same access)
-export const CONSENT_VERSION = 3;
+//   4 = also: a small script in each page counts canvas, WebGL, audio, font and location
+//       calls and cookie writes by page scripts (same access)
+export const CONSENT_VERSION = 4;
 
 // Page visits waiting to be sent while the backend is offline.
 export const QUEUE_LIMIT = 200;

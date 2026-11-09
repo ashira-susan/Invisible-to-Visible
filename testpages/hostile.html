@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Hostile page test</title></head>
+<body>
+<h1>Hostile page test</h1>
+<p>This page tries to cheat. It must finish within about a second: it prints how long it took below. If it says <strong>TOO SLOW</strong>, the browser was kept busy for so long that the visit was closed (about 10 seconds after load) before the page-script report could arrive, and the counts will be lost (a known limit); tell me the time it printed.</p>
+<p>Expected on the dashboard, about 15 seconds after load:</p>
+<ul>
+  <li>canvas count of about <strong>1000</strong>: 20000 real read-backs and 300 forged messages are sent in a fraction of a second, but at most 1000 are accepted per half second, so never 20000 and never anything near a billion</li>
+  <li>WebGL also about <strong>1000</strong> (the forged messages claim a billion, which is a valid but absurd number, so it is clamped to the same cap). Audio, font and location stay <strong>0</strong>, because the forged values for those are negative, fractional or text, which are rejected</li>
+  <li>cookies: forged names are accepted only up to a fixed cap of <strong>200</strong> per frame, so at most <strong>200</strong> first-party cookies. This shows that a page <em>can</em> inflate cookie counts a little, which is why they are best effort. Nothing is counted under <code>evil.example</code>: the forged host is ignored</li>
+  <li>the junk messages (not JSON, wrong type, wrong version, bad names) change nothing</li>
+</ul>
+<pre id="log"></pre>
+<script>
+const log = (t) => { document.getElementById("log").textContent += t + "\n"; };
+const EVENT = "itv:inpage:v1";
+const fire = (obj) => window.dispatchEvent(new CustomEvent(EVENT, { detail: typeof obj === "string" ? obj : JSON.stringify(obj) }));
+const start = performance.now();
+
+// 1. a real flood of canvas read-backs (cheap ones: a 1x1 pixel read on a canvas that had text drawn on it)
+const c = document.createElement("canvas"); c.width = 200; c.height = 40;
+const x = c.getContext("2d", { willReadFrequently: true });
+x.fillText("flood", 2, 12);
+for (let i = 0; i < 20000; i++) x.getImageData(0, 0, 1, 1);
+log("real flood done after " + Math.round(performance.now() - start) + " ms");
+
+// 2. forged events: huge numbers, endless names, a made-up host, junk
+for (let i = 0; i < 300; i++) {
+  fire({ type: "itv-inpage", v: 1, canvas: 1e9, webgl: 1e9, audio: -5, font: 1.5, geo: "many", host: "evil.example",
+         cookies: Array.from({ length: 500 }, (_, k) => "forged_" + i + "_" + k) });
+}
+fire("not json"); fire({ type: "other", v: 1, canvas: 5 }); fire({ type: "itv-inpage", v: 2, canvas: 5 });
+fire({ type: "itv-inpage", v: 1, host: "evil.example", cookies: ["a\u0000b", "x".repeat(1000), 42, null] });
+
+const total = Math.round(performance.now() - start);
+log("forged events done. Total: " + total + " ms" + (total > 5000 ? "  <-- TOO SLOW: the counts will be lost" : "  (fast enough)"));
+</script>
+</body>
+</html>

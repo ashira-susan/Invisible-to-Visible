@@ -82,10 +82,22 @@ async function fillDetail(body, scan) {
 
 function cookieSentence(c) {
   const total = c.first_party + c.third_party;
-  if (total === 0) return "No cookies were set by the page's responses during this visit.";
+  if (total === 0) return "No cookies were observed being set during this visit.";
   const parts = [`${c.first_party} by the site itself`, `${c.third_party} by other sites`];
   const tracker = c.by_trackers > 0 ? ` (${c.by_trackers} of those by known trackers)` : "";
-  return `${plural(total, "cookie was", "cookies were")} set during this visit: ${parts.join(", ")}${tracker}.`;
+  return `${plural(total, "cookie was", "cookies were")} set during this visit (by the site's responses or its scripts): ${parts.join(", ")}${tracker}.`;
+}
+
+function inpageSentence(s) {
+  const f = s.fingerprinting;
+  const parts = [];
+  if (f.canvas > 0) parts.push(plural(f.canvas, "canvas read-back", "canvas read-backs"));
+  if (f.webgl > 0) parts.push(plural(f.webgl, "WebGL graphics-card query or pixel read", "WebGL graphics-card queries or pixel reads"));
+  if (f.audio > 0) parts.push(plural(f.audio, "offline audio render", "offline audio renders"));
+  if (f.font > 0) parts.push(plural(f.font, "burst of font measuring", "bursts of font measuring"));
+  if (s.geolocation_calls > 0) parts.push(plural(s.geolocation_calls, "location request", "location requests"));
+  if (parts.length === 0) return "No canvas, WebGL, audio, font-measuring or location calls were observed during this visit.";
+  return `Calls observed during this visit: ${parts.join(", ")}. A call is not proof of tracking: many sites use these for ordinary features.`;
 }
 
 function detailNodes(detail) {
@@ -97,7 +109,8 @@ function detailNodes(detail) {
     el("p", null, detail.referrer_origin ? `Arrived from ${detail.referrer_origin}.` : "No referring site: a typed address, a bookmark, or a site that hides it."),
     el("p", null, `${plural(s.third_party_requests, "request", "requests")} to other sites.`),
     el("p", null, cookieSentence(s.cookies)),
-    el("p", "muted", "Cookies set by a page's own scripts aren't counted yet."),
+    el("p", null, inpageSentence(s)),
+    el("p", "muted", "Page-script counts come from a script running inside the page, so they are best-effort: a page can inflate, hide or evade them, and they only cover pages loaded after that script was active."),
   ];
   if (s.trackers.length === 0) {
     nodes.push(el("p", "muted", "None of the sites contacted are on the list of known trackers. Unknown trackers can still exist."));
