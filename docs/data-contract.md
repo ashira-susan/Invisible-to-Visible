@@ -106,6 +106,8 @@ Script-set cookies from a frame with no usable host (for example `about:blank`) 
 - Pausing, withdrawing consent or removing Chrome's access stops new pages from being hooked and makes the service worker ignore messages at once. Pages that are already open keep their (now silent) hooks until they are reloaded.
 - Cookies set through the `cookieStore` API, from workers, or with a `Domain=` attribute that differs from the frame's host can be missed or counted under another host.
 - Closed shadow roots, some sandboxed frames and pages that replace the wrapped APIs before the scripts run can be missed.
+- Reports that reach the service worker after the visit has been closed (about 10 seconds after load) are not counted. A page that keeps its main thread busy for longer than that, or makes these calls late, is missed, just as trackers loaded late are.
+- Requests seen in a tab just before a page starts (for example from the new-tab page you came from) can be counted for the page that follows; this is an M2a behaviour and is not changed here.
 - Nothing says which frame (which tracker's iframe) made a call; that is per-frame attribution and is left for M3.
 
 ## Never sent
