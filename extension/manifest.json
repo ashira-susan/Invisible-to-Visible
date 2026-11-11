@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Invisible to Visible",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Makes the invisible visible: see which sites you visit and which tracking companies they contact. Summaries stay on your own computer.",
   "minimum_chrome_version": "119",
   "permissions": ["storage", "webNavigation", "alarms", "scripting"],

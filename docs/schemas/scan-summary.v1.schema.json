@@ -66,11 +66,16 @@
     },
     "Signals": {
       "additionalProperties": false,
-      "description": "What the page did. Missing values mean \"none seen\", except that\n`trackers_checked` tells you whether anyone was looking: False means the user only\nallowed site names, so an empty tracker list is \"unknown\", not \"clean\".",
+      "description": "What the page did. Missing values mean \"none seen\", except that two flags tell you\nwhether anyone was looking. `trackers_checked` False means the user only allowed site\nnames, so an empty tracker list is \"unknown\", not \"clean\". `inpage_checked` False means\nthe page scripts never reported from this page (it was open before they were active, or\nthey did not run), so zero `fingerprinting` and `geolocation_calls` counts are \"not\nchecked\", not \"clean\".",
       "properties": {
         "trackers_checked": {
           "default": false,
           "title": "Trackers Checked",
+          "type": "boolean"
+        },
+        "inpage_checked": {
+          "default": false,
+          "title": "Inpage Checked",
           "type": "boolean"
         },
         "third_party_requests": {

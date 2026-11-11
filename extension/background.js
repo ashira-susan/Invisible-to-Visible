@@ -103,13 +103,13 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   if (!message || message.type !== INPAGE_TYPE) return;
   const from = acceptSender(sender, chrome.runtime.id);
   if (!from) return;
-  handleInpage(from.tabId, from.frameId, from.url, message);
+  handleInpage(from.tabId, from.frameId, from.url, message, from.documentId);
 });
 
-async function handleInpage(tabId, frameId, senderUrl, message) {
+async function handleInpage(tabId, frameId, senderUrl, message, documentId) {
   await ready;
   if (!detectsTrackers(state)) return;
-  sessions.addInpage(tabId, frameId, senderUrl, message);
+  sessions.addInpage(tabId, frameId, senderUrl, message, documentId);
 }
 
 // A top-level page was committed (after any redirects).
@@ -120,7 +120,7 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
     await sessions.finalize(details.tabId);
     return;
   }
-  await sessions.start(details.tabId, details.url);
+  await sessions.start(details.tabId, details.url, details.documentId ?? null);
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
@@ -144,10 +144,22 @@ function watchRequests() {
   if (watchingRequests || !chrome.webRequest) return;
   chrome.webRequest.onBeforeRequest.addListener(
     async (details) => {
-      if (details.tabId < 0 || details.type === "main_frame") return;
+      if (details.tabId < 0) return;
       await ready;
       if (!detectsTrackers(state)) return;
-      sessions.addRequest(details.tabId, details.url); // only the host is used; the address is not stored
+      if (details.type === "main_frame") {
+        // The page's own navigation (and each redirect hop): opens the window in which early
+        // events may be held for the page that is about to commit. Not counted as a request.
+        sessions.noteMainRequest(details.tabId, details.requestId, details.url);
+        return;
+      }
+      // Only the host is used; the address is not stored. documentId says which document made it.
+      sessions.addRequest(details.tabId, details.url, {
+        documentId: details.documentId ?? null,
+        parentDocumentId: details.parentDocumentId ?? null,
+        documentLifecycle: details.documentLifecycle ?? null,
+        frameId: details.frameId,
+      });
     },
     { urls: ["<all_urls>"] }, // observe only: nothing is blocked or changed
   );
@@ -164,7 +176,14 @@ function watchRequests() {
       if (values.length === 0) return;
       await ready;
       if (!detectsTrackers(state)) return;
-      sessions.addCookies(details.tabId, details.url, values);
+      sessions.addCookies(details.tabId, details.url, values, {
+        mainFrame: details.type === "main_frame",
+        requestId: details.requestId,
+        documentId: details.documentId ?? null,
+        parentDocumentId: details.parentDocumentId ?? null,
+        documentLifecycle: details.documentLifecycle ?? null,
+        frameId: details.frameId,
+      });
     },
     { urls: ["<all_urls>"] },
     ["responseHeaders", "extraHeaders"], // no "blocking": observe only
@@ -178,7 +197,7 @@ function watchRequests() {
       if (!referer || !referer.value) return;
       await ready;
       if (!detectsTrackers(state)) return;
-      sessions.setReferrer(details.tabId, referer.value); // the full address is not kept
+      sessions.setReferrer(details.tabId, referer.value, details.requestId); // the full address is not kept
     },
     { urls: ["<all_urls>"], types: ["main_frame"] },
     ["requestHeaders", "extraHeaders"],

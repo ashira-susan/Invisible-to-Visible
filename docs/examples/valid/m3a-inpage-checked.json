@@ -1,0 +1,20 @@
+{
+  "schema_version": "1",
+  "observed_at": "2026-11-05T10:30:00.000Z",
+  "site": {
+    "domain": "testpage.example",
+    "https": true,
+    "referrer_origin": null
+  },
+  "signals": {
+    "trackers_checked": true,
+    "inpage_checked": true,
+    "third_party_requests": 2,
+    "trackers": [
+      { "domain": "doubleclick.net", "category": "advertising", "company": "Google" }
+    ],
+    "cookies": { "first_party": 1, "third_party": 0, "by_trackers": 0 },
+    "fingerprinting": { "canvas": 0, "webgl": 0, "audio": 0, "font": 0 },
+    "geolocation_calls": 0
+  }
+}

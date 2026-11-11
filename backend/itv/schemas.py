@@ -72,11 +72,15 @@ class FingerprintingCounts(StrictModel):
 
 
 class Signals(StrictModel):
-    """What the page did. Missing values mean "none seen", except that
-    `trackers_checked` tells you whether anyone was looking: False means the user only
-    allowed site names, so an empty tracker list is "unknown", not "clean"."""
+    """What the page did. Missing values mean "none seen", except that two flags tell you
+    whether anyone was looking. `trackers_checked` False means the user only allowed site
+    names, so an empty tracker list is "unknown", not "clean". `inpage_checked` False means
+    the page scripts never reported from this page (it was open before they were active, or
+    they did not run), so zero `fingerprinting` and `geolocation_calls` counts are "not
+    checked", not "clean"."""
 
     trackers_checked: bool = False
+    inpage_checked: bool = False  # added in M3a, additive: older senders and stored rows read as False
     third_party_requests: Count = 0
     trackers: list[TrackerSeen] = Field(default_factory=list, max_length=200)
     cookies: CookieCounts = Field(default_factory=CookieCounts)

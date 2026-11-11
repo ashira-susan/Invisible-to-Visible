@@ -88,7 +88,26 @@
     } catch { /* extension context invalidated, for example after a reload */ }
   }
 
+  // A one-line "the page scripts ran here" message, from the TOP frame only. The service
+  // worker uses it to tell "no page-script calls were observed" (heartbeat seen) from
+  // "page scripts never ran in this page" (no heartbeat). It carries no data. Sent as soon
+  // as the script starts and again when the page has loaded, so one lost or early message
+  // does not matter.
+  const isTopFrame = (() => {
+    try { return window.top === window; } catch { return false; }
+  })();
+
+  function beat() {
+    if (!isTopFrame) return;
+    try {
+      const sent = chrome.runtime.sendMessage({ type: TYPE, v: 1, hb: 1 });
+      if (sent && typeof sent.catch === "function") sent.catch(() => {});
+    } catch { /* extension context invalidated */ }
+  }
+
   window.addEventListener(EVENT, onEvent);
+  beat();
+  window.addEventListener("load", beat);
   window.addEventListener("pagehide", () => {
     if (timer !== null) clearTimeout(timer);
     send();

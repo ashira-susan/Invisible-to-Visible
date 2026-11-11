@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 const RELAY = readFileSync(new URL("../inpage/relay-isolated.js", import.meta.url), "utf8");
 const EVENT = "itv:inpage:v1";
 
-function makeRelay({ sendBehaviour = "ok" } = {}) {
+function makeRelay({ sendBehaviour = "ok", topFrame = false } = {}) {
   const host = { __sent: [], __listeners: {}, __timers: [], __cleared: [] };
   host.chrome = {
     runtime: {
@@ -22,6 +22,9 @@ function makeRelay({ sendBehaviour = "ok" } = {}) {
   const context = vm.createContext(host);
   vm.runInContext(`
     globalThis.window = globalThis;
+    ${topFrame === "throws"
+      ? 'Object.defineProperty(globalThis, "top", { get() { throw new Error("blocked a frame with origin"); } });'
+      : topFrame ? "globalThis.top = globalThis;" : "globalThis.top = {};"}
     globalThis.addEventListener = (name, fn) => { (__listeners[name] ??= []).push(fn); };
     globalThis.setTimeout = (fn, ms) => { __timers.push({ fn, ms }); return __timers.length; };
     globalThis.clearTimeout = (id) => { __cleared.push(id); if (__timers[id - 1]) __timers[id - 1].dead = true; };
@@ -129,4 +132,40 @@ test("a missing worker or an invalidated extension never throws into the page", 
     await new Promise((resolve) => setImmediate(resolve)); // let a rejected promise settle: it must be handled
     assert.ok(host.__sent.length <= 1);
   }
+});
+
+// ---- the heartbeat: "the page scripts ran in this top frame" ----
+
+test("the top frame sends one heartbeat at once and another when the page has loaded", () => {
+  const { host } = makeRelay({ topFrame: true });
+  assert.deepEqual(host.__sent, [{ type: "itv-inpage", v: 1, hb: 1 }]);
+  host.__listeners.load[0]();
+  assert.deepEqual(host.__sent, [{ type: "itv-inpage", v: 1, hb: 1 }, { type: "itv-inpage", v: 1, hb: 1 }]);
+});
+
+test("a sub-frame sends no heartbeat", () => {
+  const { host } = makeRelay({ topFrame: false });
+  host.__listeners.load?.forEach((fn) => fn());
+  assert.equal(host.__sent.length, 0);
+});
+
+test("a frame whose top cannot be compared is treated as a sub-frame", () => {
+  const { host } = makeRelay({ topFrame: "throws" });
+  host.__listeners.load?.forEach((fn) => fn());
+  assert.equal(host.__sent.length, 0);
+});
+
+test("a heartbeat that cannot be delivered is ignored, never thrown", () => {
+  for (const sendBehaviour of ["throw", "reject"]) {
+    const { host } = makeRelay({ topFrame: true, sendBehaviour });
+    assert.doesNotThrow(() => host.__listeners.load[0]());
+  }
+});
+
+test("a web page cannot make the relay send a heartbeat by itself", () => {
+  const { host, fireObj, tick } = makeRelay({ topFrame: false });
+  fireObj(ok({ hb: 1 }));
+  fireObj({ type: "itv-inpage", v: 1, hb: 1, canvas: 0 });
+  tick();
+  assert.equal(host.__sent.length, 0);
 });
