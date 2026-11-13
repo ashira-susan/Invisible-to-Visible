@@ -62,8 +62,18 @@
     if (timer === null) timer = setTimeout(send, TICK_MS);
   }
 
+  // Chrome can load a page in the background before it is shown (a prerender: typed
+  // addresses and some links). The page's scripts run then, with a frame id that is not 0,
+  // before the browser reports the page as committed, so the service worker cannot yet
+  // attribute anything from it. Counts are therefore kept (same caps) and the heartbeat is
+  // withheld until the page is activated.
+  function prerendering() {
+    try { return document.prerendering === true; } catch { return false; }
+  }
+
   function send() {
     timer = null;
+    if (prerendering()) return; // keep what has accumulated until the page is shown
     try {
       const names = queue.splice(0, MAX_NAMES_PER_MESSAGE);
       forwardedNames += names.length;
@@ -98,7 +108,7 @@
   })();
 
   function beat() {
-    if (!isTopFrame) return;
+    if (!isTopFrame || prerendering()) return;
     try {
       const sent = chrome.runtime.sendMessage({ type: TYPE, v: 1, hb: 1 });
       if (sent && typeof sent.catch === "function") sent.catch(() => {});
@@ -108,6 +118,24 @@
   window.addEventListener(EVENT, onEvent);
   beat();
   window.addEventListener("load", beat);
+  // A page restored from Chrome's back/forward cache keeps its scripts running but does not
+  // start them again, so no heartbeat would be sent and the visit would read "not checked".
+  // Send one on restore, and again a moment later because the worker may not have processed
+  // the restore's commit yet (a heartbeat that arrives before it is dropped).
+  window.addEventListener("pageshow", (event) => {
+    if (!isTopFrame || !event || event.persisted !== true) return;
+    beat();
+    setTimeout(beat, 1000);
+  });
+  // The page was shown after a prerender: say so (twice, for the same reason as above) and
+  // let the counts kept while it was hidden go out on the next tick.
+  try {
+    document.addEventListener("prerenderingchange", () => {
+      beat();
+      setTimeout(beat, 1000);
+      schedule();
+    });
+  } catch { /* no document, or no prerendering in this Chrome */ }
   window.addEventListener("pagehide", () => {
     if (timer !== null) clearTimeout(timer);
     send();

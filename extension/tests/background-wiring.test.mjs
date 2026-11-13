@@ -242,3 +242,24 @@ test("worker: a real third-party request from the new page's own ad frame is sti
   await w.advance(10_000);
   assert.equal(w.posted[0].signals.third_party_requests, 2);
 });
+
+test("worker: a page restored from the back/forward cache is checked only by a heartbeat that arrives after its commit", async (t) => {
+  const w = install(); t.after(() => w.restore());
+  await w.load();
+  await w.navigate(B, { documentId: "doc-B", requestId: "r1" });
+  await w.advance(10_000);                                                   // first visit sent
+  // Back/forward restore: the same document commits again, with no main-frame request
+  await w.relayMessage(beat, { documentId: "doc-B", url: B });               // too early: nothing is open, nothing is held
+  await w.fire("webNavigation.onCommitted", { tabId: TAB, frameId: 0, url: B, documentId: "doc-B" });
+  await w.quiet();
+  await w.relayMessage(beat, { documentId: "doc-B", url: B });               // the repeat a second later
+  await w.advance(10_000);
+  assert.equal(w.posted.length, 2);
+  assert.equal(w.posted[1].signals.inpage_checked, true);
+
+  // and without the repeat the restored visit honestly reads "not checked"
+  await w.fire("webNavigation.onCommitted", { tabId: TAB, frameId: 0, url: B, documentId: "doc-B" });
+  await w.quiet();
+  await w.advance(10_000);
+  assert.equal(w.posted[2].signals.inpage_checked, false);
+});

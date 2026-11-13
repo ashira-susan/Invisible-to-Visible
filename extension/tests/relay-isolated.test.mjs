@@ -8,8 +8,14 @@ import { readFileSync } from "node:fs";
 const RELAY = readFileSync(new URL("../inpage/relay-isolated.js", import.meta.url), "utf8");
 const EVENT = "itv:inpage:v1";
 
-function makeRelay({ sendBehaviour = "ok", topFrame = false } = {}) {
-  const host = { __sent: [], __listeners: {}, __timers: [], __cleared: [] };
+function makeRelay({ sendBehaviour = "ok", topFrame = false, prerendering = false } = {}) {
+  const host = { __sent: [], __listeners: {}, __docListeners: {}, __timers: [], __cleared: [] };
+  if (prerendering !== null) {
+    host.document = {
+      prerendering,
+      addEventListener: (name, fn) => { (host.__docListeners[name] ??= []).push(fn); },
+    };
+  }
   host.chrome = {
     runtime: {
       sendMessage: (message) => {
@@ -168,4 +174,77 @@ test("a web page cannot make the relay send a heartbeat by itself", () => {
   fireObj({ type: "itv-inpage", v: 1, hb: 1, canvas: 0 });
   tick();
   assert.equal(host.__sent.length, 0);
+});
+
+test("restoring the page from the back/forward cache sends the heartbeat again, now and a moment later", () => {
+  const { host, tick } = makeRelay({ topFrame: true });
+  host.__sent.length = 0; // forget the heartbeats from the first load
+  host.__listeners.pageshow[0]({ persisted: true });
+  assert.equal(host.__sent.length, 1);
+  tick();
+  assert.deepEqual(host.__sent, [{ type: "itv-inpage", v: 1, hb: 1 }, { type: "itv-inpage", v: 1, hb: 1 }]);
+});
+
+test("a normal pageshow, or a restored sub-frame, sends nothing extra", () => {
+  const top = makeRelay({ topFrame: true });
+  top.host.__sent.length = 0;
+  top.host.__listeners.pageshow[0]({ persisted: false });
+  top.host.__listeners.pageshow[0](undefined);
+  top.tick();
+  assert.equal(top.host.__sent.length, 0);
+
+  const frame = makeRelay({ topFrame: false });
+  frame.host.__listeners.pageshow[0]({ persisted: true });
+  frame.tick();
+  assert.equal(frame.host.__sent.length, 0);
+});
+
+// ---- prerendered pages (a typed address is loaded in the background, then shown) ----
+
+test("while the page is prerendering no heartbeat is sent, and calls are kept, not sent", () => {
+  const { host, fireObj, tick } = makeRelay({ topFrame: true, prerendering: true });
+  assert.equal(host.__sent.length, 0);                    // no heartbeat at start
+  host.__listeners.load?.forEach((fn) => fn());
+  assert.equal(host.__sent.length, 0);                    // none at load either
+  fireObj(ok({ canvas: 2, cookies: ["a"] }));
+  tick();
+  assert.equal(host.__sent.length, 0);                    // counts are held back
+});
+
+test("when a prerendered page is shown, the heartbeat goes out and the kept calls follow", () => {
+  const { host, fireObj, tick } = makeRelay({ topFrame: true, prerendering: true });
+  fireObj(ok({ canvas: 2, cookies: ["a"] }));
+  tick();
+  host.document.prerendering = false;                     // the page is activated
+  host.__docListeners.prerenderingchange[0]();
+  assert.deepEqual(host.__sent, [{ type: "itv-inpage", v: 1, hb: 1 }]);
+  tick();                                                 // the kept counts and the repeated heartbeat
+  assert.ok(host.__sent.some((m) => m.canvas === 2 && m.cookies.length === 1 && m.cookies[0] === "a"));
+  assert.equal(host.__sent.filter((m) => m.hb === 1).length, 2);
+});
+
+test("what is kept while prerendering stays within the same caps", () => {
+  const { host, fireObj, tick } = makeRelay({ topFrame: true, prerendering: true });
+  for (let i = 0; i < 50; i++) fireObj(ok({ canvas: 999, cookies: Array.from({ length: 25 }, (_, n) => `n${i}_${n}`) }));
+  host.document.prerendering = false;
+  host.__docListeners.prerenderingchange[0]();
+  tick();
+  const data = host.__sent.find((m) => m.hb !== 1);
+  assert.ok(data.canvas <= 1000);
+  assert.ok(data.cookies.length <= 25);
+});
+
+test("a prerendered sub-frame never sends a heartbeat when shown", () => {
+  const { host, tick } = makeRelay({ topFrame: false, prerendering: true });
+  host.document.prerendering = false;
+  host.__docListeners.prerenderingchange[0]();
+  tick();
+  assert.equal(host.__sent.length, 0);
+});
+
+test("a Chrome with no document or no prerendering support behaves as before", () => {
+  const none = makeRelay({ topFrame: true, prerendering: null });  // no `document` at all
+  assert.deepEqual(none.host.__sent, [{ type: "itv-inpage", v: 1, hb: 1 }]);
+  const plain = makeRelay({ topFrame: true });                     // document.prerendering is false
+  assert.deepEqual(plain.host.__sent, [{ type: "itv-inpage", v: 1, hb: 1 }]);
 });
