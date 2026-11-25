@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "source": "Ported from the legacy prototype (legacy/backend/knowledge_base.py). Editorial and unverified, not derived from the tracker list. The prototype's risk ratings were deliberately not ported, and its CDN entry (cloudfront.net) was left out because a CDN is not a tracker.",
+  "products": [
+    {
+      "name": "Google Analytics",
+      "company": "Google",
+      "purpose": "Website analytics",
+      "hosts": ["google-analytics.com"],
+      "typical_data": ["Page views", "Clicks", "Session duration", "Browser", "Language", "Device"]
+    },
+    {
+      "name": "Google Tag Manager",
+      "company": "Google",
+      "purpose": "Tag management",
+      "hosts": ["googletagmanager.com"],
+      "typical_data": ["Events", "Clicks", "Marketing tags"]
+    },
+    {
+      "name": "Meta Pixel",
+      "company": "Meta",
+      "purpose": "Advertising",
+      "hosts": ["facebook.net"],
+      "typical_data": ["Purchases", "Page visits", "Ad clicks"]
+    },
+    {
+      "name": "Amazon Ads",
+      "company": "Amazon",
+      "purpose": "Advertising",
+      "hosts": [],
+      "typical_data": ["Shopping behaviour", "Clicks"]
+    }
+  ]
+}

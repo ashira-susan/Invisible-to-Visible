@@ -15,12 +15,15 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__
 from .api import router
 from .config import DASHBOARD_DIR
-from .db import init_db
+from .db import SessionLocal, init_db
+from .retention import maybe_purge
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    with SessionLocal() as db:
+        maybe_purge(db)  # drop visits past the retention period
     yield
 
 

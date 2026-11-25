@@ -126,6 +126,16 @@ A top-level response's cookies are now counted for the page it loads, not for th
 
 Held events live in memory only. A service-worker restart in the middle of a navigation loses them, which can only undercount.
 
+## Storage (M3b)
+
+**Tables.** `installs` (one row per install id), `scans` (one row per visit) and `scan_trackers` (one row per known tracker seen on a visit). `scans.signals` keeps the raw JSON exactly as the extension sent it and is the source of truth. The other `scans` columns (`site`, `trackers_checked`, `inpage_checked`, `third_party_requests`, `tracker_count`, `cookies_first_party`, `cookies_third_party`, `cookies_by_trackers`, `fp_canvas`, `fp_webgl`, `fp_audio`, `fp_font`, `geolocation_calls`) and the `scan_trackers` rows are **derived** from it by one function (`derive.py`), used both for new visits and for upgrading old ones, so a new column can always be re-derived without re-collecting. `site` is the registrable domain, from the same Public Suffix List file and algorithm as the extension (both are tested against `docs/psl-test-cases.json`). `trackers_checked` and `inpage_checked` keep their meaning: `false` is "unknown", never "clean", and a stored value is true only if the raw JSON says exactly `true`.
+
+**Schema versions** live in SQLite's `PRAGMA user_version`: 0 = M1 to M3a, 1 = M3b. Upgrading a database makes a verified safety copy first (`itv.db.bak-v0-<UTC time>` in the data folder), then does the whole change in one transaction, so it either completes or leaves the database exactly as it was. Running it again does nothing. A database from a newer app is refused. A fresh database and an upgraded one have the same schema (tested).
+
+**Deleting.** `DELETE /api/v1/me` removes the install's visits, their tracker rows and the install record, and also the safety copies, because they hold the same browsing history. The retention purge removes tracker rows with the visits it deletes. Neither depends on SQLite's foreign-key setting (the code deletes the tracker rows itself; the foreign key with `ON DELETE CASCADE` is a second safeguard).
+
+**Not claimed.** The database file is not encrypted (D-20).
+
 ## Never sent
 
 Full URLs, paths, query strings, fragments, page titles or content, cookie names or values, form entries, keystrokes, usernames or passwords in URLs.
@@ -136,7 +146,7 @@ Full URLs, paths, query strings, fragments, page titles or content, cookie names
 |---|---|---|
 | D-1 | Send the full hostname or only the registrable domain? | **Decided (M2):** full hostname. Group by registrable domain later, on the backend. |
 | D-2 | Which tracker list? | **Decided (M2a):** Disconnect `services.json` and `entities.json` (CC BY-NC-SA 4.0). See `THIRD_PARTY_NOTICES.md`. |
-| D-3 | How long are visits kept? The plan assumes 90 days. | Open, decide in M3. |
+| D-3 | How long are visits kept? | **Decided (M3b):** 90 days by default, `ITV_RETENTION_DAYS` changes it (0 keeps everything; an unusable value means 90). Age is measured from `observed_at`. The purge runs at startup and at most once an hour after a new visit arrives. See "Storage (M3b)". |
 | D-4 | When is all-sites access requested? | **Decided (M2a):** at consent time, as an optional permission, not at install. |
 | D-5 | When is a visit's summary sent? | **Decided (M2a):** about 10 seconds after load, on leaving the page, or when the tab closes. |
 | D-6 | How are cookies counted? | **Decided (M2b):** from `Set-Cookie` headers during the visit, de-duplicated by a one-way hash. No `cookies` permission, no names or values kept. |
@@ -153,3 +163,7 @@ Full URLs, paths, query strings, fragments, page titles or content, cookie names
 | D-17 | What may be given to a page that is about to commit? | **Decided (M3a):** only what is attributable with certainty. Held while a navigation is in progress; the navigation's own events by `requestId` and committed-address match; document events by top frame and `documentId`. Ambiguous events are dropped (undercount, never misattribution). Chrome's `documentId` is present for sub-resource requests, page-script senders and `onCommitted`, absent for `main_frame` requests and inconsistent on `onHeadersReceived` (diagnosed in Chrome, M3a). |
 | D-18 | What happens to a navigation that never commits? | **Decided (M3a):** nothing is attributed to a different page: the committed address must match the navigation's. A stale navigation expires after 30 seconds or when the next one starts. `webNavigation.onErrorOccurred` is deliberately not used: an aborted navigation's error can arrive after the next navigation has started and would wipe its events. |
 | D-19 | What about requests from the page we just left, after the new page has committed? | **Decided (M3a, found in real Chrome):** not counted when the document's `documentLifecycle` is not `active`, or when a top-level document's `documentId` differs from the committed page's. Anything Chrome gives no lifecycle or id for is still counted (undercounting trackers would look like "clean"). Sub-frames nested deeper than one level cannot be checked. |
+| D-20 | Is the stored data encrypted at rest? | **No, and we do not claim it (M3b).** SQLite is not encrypted. The data never leaves this computer and holds hostnames, counts and tracker names only, but anyone with access to the file can read it. Operating-system disk encryption is the practical protection; revisit in M8 (SQLCipher or similar). |
+| D-21 | How is the database upgraded? | **Decided (M3b):** `PRAGMA user_version`, a verified safety copy, one transaction, idempotent, refuses a newer database. No third-party migration tool. |
+| D-22 | Do safety copies survive "delete all my data"? | **No (M3b).** They hold the same history, so `DELETE /api/v1/me` removes every `itv.db.bak-*` file in the data folder, including copies that contain other installs' data on the same computer (they are only safety copies; live data of other installs is untouched). |
+| D-23 | Where does tracker knowledge live? | **Decided (M3b):** in data files (`backend/itv/knowledge/*.json`), loaded and validated by `knowledge.py`. The legacy prototype knew only four products; those were ported without its risk ratings (unsupported judgements) and without its cookie-name table (cookie names never reach the backend, only hashes in the browser). Category weights for the Privacy Score live in a data file in M3c. |

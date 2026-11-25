@@ -52,3 +52,19 @@ test("internationalised suffixes (cases from the official list tests, as punycod
   assert.equal(psl.registrableDomain(ascii("shishi.公司.cn")), ascii("shishi.公司.cn"));
   assert.equal(psl.registrableDomain(ascii("www.食狮.com.cn")), ascii("食狮.com.cn"));
 });
+
+// The same cases the backend's Python implementation is tested with (backend/tests/test_psl.py),
+// taken from Mozilla's official tests: both sides must agree on what a site is.
+const shared = JSON.parse(readFileSync(new URL("../../docs/psl-test-cases.json", import.meta.url), "utf8"));
+
+for (const [host, expected] of shared.registrable) {
+  test(`shared case: registrableDomain(${host}) = ${expected}`, () => {
+    assert.equal(psl.registrableDomain(host), expected);
+  });
+}
+
+for (const [host, expected] of shared.unchanged) {
+  test(`shared case: ${host} is returned unchanged`, () => {
+    assert.equal(psl.registrableDomain(host), expected);
+  });
+}

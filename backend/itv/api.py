@@ -4,12 +4,14 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import __version__
 from .db import get_db
 from .models import Install, Scan
+from .retention import maybe_purge
+from .store import add_scan_derived, delete_install_data, remove_migration_backups
 from .schemas import Deleted, ScanCreated, ScanDetail, ScanList, ScanOut, ScanSummary, Signals
 
 router = APIRouter(prefix="/api/v1")
@@ -32,16 +34,15 @@ def install_id_header(
 
 
 def _to_out(row: Scan) -> ScanOut:
-    signals = row.signals or {}
     return ScanOut(
         id=row.id,
         domain=row.domain,
         https=row.https,
         observed_at=row.observed_at,
-        third_party_requests=signals.get("third_party_requests", 0),
-        tracker_count=len(signals.get("trackers", [])),
-        third_party_cookies=signals.get("cookies", {}).get("third_party", 0),
-        trackers_checked=bool(signals.get("trackers_checked", False)),
+        third_party_requests=row.third_party_requests,
+        tracker_count=row.tracker_count,
+        third_party_cookies=row.cookies_third_party,
+        trackers_checked=row.trackers_checked,
     )
 
 
@@ -73,7 +74,10 @@ def create_scan(
         signals=summary.signals.model_dump(mode="json"),
     )
     db.add(scan)
+    db.flush()  # gives the scan its id
+    add_scan_derived(db, scan)
     db.commit()
+    maybe_purge(db)  # at most once an hour; never fails the request
     return ScanCreated(id=scan.id, domain=scan.domain)
 
 
@@ -114,7 +118,7 @@ def delete_my_data(
     install_id: str = Depends(install_id_header),
     db: Session = Depends(get_db),
 ):
-    result = db.execute(delete(Scan).where(Scan.install_id == install_id))
-    db.execute(delete(Install).where(Install.install_id == install_id))
+    deleted = delete_install_data(db, install_id)  # visits, their tracker rows and the install record
     db.commit()
-    return Deleted(deleted_scans=result.rowcount or 0)
+    remove_migration_backups()  # a safety copy made before a migration holds the same history
+    return Deleted(deleted_scans=deleted)
