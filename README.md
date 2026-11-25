@@ -1,48 +1,233 @@
-# Invisible to Visible (PriviLens)
+# 🌐 Invisible to Visible
 
-**Status: M2c – In-Page Privacy Signal Collection completed, tested, merged into `main`, and tagged `v0.2-m2c`.**
+<p align="center">
+  <strong>Making invisible digital activity visible.</strong>
+</p>
 
-Invisible to Visible (PriviLens) is a privacy-awareness project designed to make website visits and privacy-related activity more transparent through a browser extension, a local backend, and a dashboard.
+<p align="center">
+  A privacy-awareness platform that helps users understand what happens behind the scenes when they browse the web.
+</p>
 
-The project aims to help users understand how websites interact with their browsers, including third-party tracking, cookie activity, referring sites, and selected browser API usage associated with fingerprinting.
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-M3b%20Completed-2ea44f?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Platform-Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" />
+  <img src="https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/Database-SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
+</p>
 
-## Current Implementation – M0 to M2c
+---
 
-The current implementation establishes a consent-based website monitoring and privacy signal collection flow.
+## ✨ About the Project
 
-- Chrome extension with explicit user consent and optional all-sites access.
-- Captures website hostnames and HTTPS status.
-- Sends summarized visit information to a FastAPI backend.
-- Validates incoming data using a versioned data contract.
-- Stores visit records in a local SQLite database.
-- Detects third-party requests and classifies known trackers.
-- Collects first-party, third-party, and tracker-associated cookie counts.
-- Records the referring site's origin without storing the complete referrer URL.
-- Observes selected in-page browser API calls associated with canvas, WebGL, audio, font measuring, and geolocation.
-- Observes script-set cookies and uses one-way hashes for cookie identification.
-- Displays recorded visits and available privacy signals in the dashboard.
-- Supports pausing and resuming recording and deleting recorded data.
-- Dynamically registers in-page scripts according to consent and permissions.
+**Invisible to Visible (PriviLens)** is a privacy-awareness project designed to make website visits and privacy-related activity more transparent through a browser extension, a local backend, and a dashboard.
 
-### Privacy by Design
+Modern websites interact with browsers through requests, cookies, scripts, and browser APIs. Some of these interactions are associated with tracking and fingerprinting techniques, yet much of this activity remains invisible to everyday users.
 
-The project follows a data-minimization and user-consent approach:
+Invisible to Visible aims to bring selected aspects of this activity into a simple, understandable, and user-controlled interface.
 
-- Stores website hostnames rather than complete URLs.
-- Does not collect URL paths, query parameters, page titles, or page content.
-- Requires user consent before recording visits.
-- Uses optional browser permissions for extended monitoring.
-- Does not store cookie names or cookie values. Cookie names are hashed before being retained.
-- Stores only the referring site's origin, not the complete referring page or search URL.
-- Observes selected browser API calls without collecting actual geolocation coordinates.
-- Keeps raw page-level activity inside the browser and sends summarized signals to the local backend.
-- Supports pausing and withdrawing consent.
+> 🔍 **The goal:** Turn invisible digital activity into visible, understandable information.
 
-**Note:** In-page observations are best-effort measurements. They do not prove that fingerprinting or malicious activity has occurred. A zero count does not guarantee that a website is free from tracking.
+---
 
-## Built With
+## 🚀 Current Status
 
-- **Python 3.14** – Backend development
+<details>
+<summary><strong>Milestone overview</strong></summary>
+
+| Milestone | Status |
+|---|---|
+| M0 – Repository cleanup | ✅ Completed |
+| M1 – Contract and application skeleton | ✅ Completed |
+| M2a – Tracker detection | ✅ Completed |
+| M2b – Cookie and referrer signals | ✅ Completed |
+| M2c – In-page privacy signal collection | ✅ Completed |
+| M3a – Early-request attribution | ✅ Completed |
+| M3b – Backend store, migrations and retention | ✅ Completed |
+| M3c – Privacy Score and endpoints | 🚧 Planned / next |
+| M4 – Dashboard visualizations and filtering | 📋 Planned |
+| M5 – Threat and trust analysis | 📋 Planned |
+| M6 – Intelligence and recommendations | 📋 Planned |
+| M7 – Data Ownership Mapping | 📋 Planned |
+| M8 – Security, performance, evaluation and v1.0 | 📋 Planned |
+
+</details>
+
+<details>
+<summary><strong>Latest milestone: M3b – Backend Store</strong></summary>
+
+M3b improves the backend storage model, migration safety, data retention, tracker storage, and consistency between browser-side and backend site identification.
+
+**Implemented:**
+
+- Derived scan columns alongside the original signals JSON.
+- Dedicated `scan_trackers` storage.
+- Unified signal derivation for new visits and migrated visits.
+- Versioned SQLite migration using `PRAGMA user_version`.
+- Verified pre-migration database safety copies.
+- Transaction-based migration.
+- Configurable 90-day data retention.
+- Tracker-aware deletion and database cleanup.
+- Shared Public Suffix List implementation.
+- Legacy tracker knowledge ported into the backend.
+- Preservation of unknown-versus-checked signal states.
+
+**Milestone verification:**
+
+- Backend tests: **190 passed**
+- Extension tests: **245 passed**
+- Database migration: verified
+- Migrated visits: **399**
+- Tracker rows: **781**
+- Orphaned tracker rows: **0**
+
+M3b was merged into `main` and tagged `v0.3-m3b`.
+
+</details>
+
+---
+
+## 🧭 How It Works
+
+```mermaid
+flowchart LR
+    A[🌐 Website Visit] --> B[🧩 Chrome Extension]
+    B --> C[📡 Privacy Signals]
+    C --> D[🛡️ FastAPI Backend]
+    D --> E[(🗄️ SQLite)]
+    E --> F[📊 Dashboard]
+```
+
+1. **🌐 Browse:** A user visits a website.
+2. **🧩 Observe:** The browser extension collects consent-authorized privacy signals.
+3. **📡 Summarize:** The extension sends structured, summarized information.
+4. **🛡️ Validate:** The backend validates incoming data using the data contract.
+5. **🗄️ Store:** Visit information and derived data are stored locally.
+6. **📊 Visualize:** The dashboard presents available privacy information.
+
+---
+
+## 🔎 Current Implementation – M0 to M3b
+
+The current implementation establishes a consent-based website monitoring and privacy signal collection flow, with backend storage improvements completed through M3b.
+
+### 🧩 Browser Monitoring
+
+- Chrome extension with explicit user consent.
+- Optional all-sites access.
+- Hostname-based website visit capture.
+- HTTPS status recording.
+- Consent-based recording control.
+- Pause and resume functionality.
+- Consent withdrawal and data deletion.
+- Dynamic in-page script registration according to consent and permissions.
+
+### 🕵️ Tracker Detection
+
+- Third-party request detection.
+- Classification of known trackers.
+- Tracker identification based on hostname and shared Public Suffix List logic.
+- Tracker-associated cookie counts.
+- Tracker data maintained through backend knowledge data.
+
+### 🍪 Cookie and Referrer Signals
+
+- First-party cookie counts.
+- Third-party cookie counts.
+- Tracker-associated cookie counts.
+- Script-set cookie observation.
+- One-way cookie identification hashes.
+- Referrer-origin recording without retaining the complete referrer URL.
+
+### 🧠 In-Page Privacy Signals
+
+Observes selected browser API calls associated with:
+
+- Canvas.
+- WebGL.
+- Audio.
+- Font measuring.
+- Geolocation API usage.
+
+The extension observes API usage patterns without collecting actual geolocation coordinates.
+
+### ⚙️ Backend Storage
+
+- Versioned data contract.
+- FastAPI backend.
+- SQLite database.
+- Derived scan columns.
+- Dedicated tracker-per-visit storage.
+- Shared signal derivation logic.
+- Versioned database migrations.
+- Migration safety backups.
+- Transaction-based migration.
+- Configurable retention.
+- Tracker-aware data deletion.
+- Public Suffix List support.
+
+### 📊 Dashboard
+
+- Recorded website visits.
+- Tracker counts.
+- Cookie counts.
+- Referrer information.
+- In-page privacy signals.
+- Visit-level signal availability.
+- Explanatory descriptions of observed activity.
+
+---
+
+## 🔐 Privacy by Design
+
+Invisible to Visible follows a data-minimization and user-consent approach.
+
+| Principle | Implementation |
+|---|---|
+| 🛂 Consent | Recording requires user consent. |
+| 🌐 URL minimization | Stores hostnames rather than complete URLs. |
+| 🚫 No page content | Does not collect URL paths, query parameters, page titles or page content. |
+| 🍪 Cookie minimization | Does not store cookie names or values. Cookie names are hashed before retention. |
+| 🔗 Referrer minimization | Stores only the referring site's origin. |
+| 📍 Location privacy | Observes geolocation API usage without collecting actual coordinates. |
+| 🧠 In-page minimization | Keeps raw page-level activity inside the browser and sends summarized signals. |
+| ⏸️ User control | Supports pausing, resuming and withdrawing consent. |
+| 🗄️ Data ownership | Stores monitoring data locally in SQLite. |
+| 🧹 Retention | Supports configurable data retention. |
+
+> ⚠️ **Privacy signal limitations**
+>
+> In-page observations are best-effort measurements. They do not prove that fingerprinting or malicious activity has occurred. A zero count does not guarantee that a website is free from tracking.
+>
+> Page-script counts originate from scripts running inside the page. A page can inflate, hide or evade these observations. They also cover only pages loaded after the observation script became active.
+
+---
+
+## 🏗️ Architecture
+
+| Component | Technology | Purpose |
+|---|---|---|
+| 🧩 Browser Extension | JavaScript + Chrome Extension APIs | Consent, monitoring, signal collection and communication |
+| 🛡️ Backend | Python + FastAPI | API, validation, derivation, storage and migration |
+| 🗄️ Database | SQLite | Local visit and tracker storage |
+| 📊 Dashboard | HTML, CSS and JavaScript | Privacy signal presentation |
+| 🧪 Backend Testing | pytest | Backend functionality and regression testing |
+| 🧪 Extension Testing | Node.js Test Runner | Extension functionality and integration testing |
+
+---
+
+## 🛠️ Built With
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/FastAPI-Backend-009688?style=flat-square&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLite-Storage-003B57?style=flat-square&logo=sqlite&logoColor=white" />
+  <img src="https://img.shields.io/badge/JavaScript-Extension-F7DF1E?style=flat-square&logo=javascript&logoColor=black" />
+  <img src="https://img.shields.io/badge/Chrome-Extension-4285F4?style=flat-square&logo=googlechrome&logoColor=white" />
+  <img src="https://img.shields.io/badge/pytest-Testing-0A9EDC?style=flat-square&logo=pytest&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-Test%20Runner-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
+</p>
+
+- **Python** – Backend development
 - **FastAPI** – Backend API
 - **SQLAlchemy** – Database interaction
 - **SQLite** – Local data storage
@@ -53,16 +238,18 @@ The project follows a data-minimization and user-consent approach:
 - **pytest** – Backend testing
 - **Node.js Test Runner** – Extension testing
 
-## Setup and Installation
+---
 
-### 1. Clone the Repository
+## 📥 Setup and Installation
+
+### 1️⃣ Clone the Repository
 
 ```powershell
 git clone https://github.com/ashira-susan/Invisible-to-Visible.git
 cd Invisible-to-Visible
 ```
 
-### 2. Set Up the Backend
+### 2️⃣ Set Up the Backend
 
 Create a virtual environment from the project root:
 
@@ -96,17 +283,13 @@ python -m uvicorn itv.main:app --reload
 
 The backend runs at:
 
-`http://127.0.0.1:8000`
+| Service | Address |
+|---|---|
+| 🛡️ Backend | `http://127.0.0.1:8000` |
+| 📖 API Documentation | `http://127.0.0.1:8000/docs` |
+| 📊 Dashboard | `http://127.0.0.1:8000/app/` |
 
-API documentation:
-
-`http://127.0.0.1:8000/docs`
-
-Dashboard:
-
-`http://127.0.0.1:8000/app/`
-
-### 3. Load the Chrome Extension
+### 3️⃣ Load the Chrome Extension
 
 1. Open `chrome://extensions/` in Google Chrome.
 2. Enable **Developer mode**.
@@ -116,7 +299,7 @@ Dashboard:
 6. Open the extension and review the consent options.
 7. Grant the optional permissions if you want extended privacy signal collection.
 
-### Refresh Tracker Data
+### 🔄 Refresh Tracker Data
 
 Run the following command from the project root to refresh the tracker data:
 
@@ -124,7 +307,7 @@ Run the following command from the project root to refresh the tracker data:
 python tools\build_extension_data.py
 ```
 
-### 4. Run and Test the Application
+### 4️⃣ Run and Test the Application
 
 1. Keep the FastAPI backend running.
 2. Open the Invisible to Visible extension.
@@ -136,32 +319,80 @@ python tools\build_extension_data.py
 
 You can also test pausing, resuming, withdrawing consent, cookie collection, and in-page signal observation using the supplied test pages.
 
-## Testing
+---
 
-The M2c implementation includes:
+## 🧪 Testing
+
+Testing is an integral part of the development process.
+
+### Automated Testing
+
+The current M3b milestone includes:
 
 - Backend API and data contract tests.
-- Chrome extension unit and integration tests.
+- Signal derivation tests.
+- Tracker storage tests.
+- Database migration tests.
+- Retention tests.
+- Public Suffix List tests.
+- Tracker knowledge tests.
+- Extension background wiring tests.
 - In-page script and relay tests.
-- Page-session and cookie handling tests.
-- Browser-level testing in Google Chrome.
-- Hostile-page testing for input validation, rate limiting, and count clamping.
+- Page-session and early-event tests.
+- Cookie handling tests.
 
-Verified test results during M2c development:
+### Latest Verified Results
 
-- Backend: 58 tests passed.
-- Extension: 121 tests passed.
-- Total: 179 automated tests passed.
+| Test Suite | Result |
+|---|---:|
+| 🛡️ Backend | **190 passed** |
+| 🧩 Extension | **245 passed** |
+| 🎯 Total | **435 passed** |
 
-Real-Chrome testing was also performed for permission handling, script registration, consent changes, pause/resume behaviour, cookie handling, and hostile-page scenarios.
+### Database Migration Verification
 
-## Project Structure
+M3b migration testing verified:
+
+- Versioned SQLite migration.
+- Safety-copy creation.
+- Transaction-based migration.
+- Fresh database and migrated database schema consistency.
+- Preservation of visit records.
+- Tracker-row integrity.
+- No orphaned tracker records.
+- Migration idempotency.
+
+**Verified real database migration:**
+
+| Verification | Result |
+|---|---:|
+| Database version | 1 |
+| Visits | 399 |
+| Tracker rows | 781 |
+| Orphaned tracker rows | 0 |
+
+---
+
+## 📂 Project Structure
 
 ```text
 Invisible-to-Visible/
 │
 ├── backend/
 │   ├── itv/
+│   │   ├── knowledge/
+│   │   ├── api.py
+│   │   ├── config.py
+│   │   ├── db.py
+│   │   ├── derive.py
+│   │   ├── knowledge.py
+│   │   ├── main.py
+│   │   ├── migrations.py
+│   │   ├── models.py
+│   │   ├── psl.py
+│   │   ├── retention.py
+│   │   └── store.py
+│   │
 │   ├── tests/
 │   ├── tools/
 │   ├── requirements.txt
@@ -201,43 +432,90 @@ Invisible-to-Visible/
 │   ├── examples/
 │   └── schemas/
 │
-└── legacy/
-    ├── backend/
-    ├── dashboard/
-    └── extension/
+├── legacy/
+│   ├── backend/
+│   ├── dashboard/
+│   └── extension/
+│
+└── README.md
 ```
 
-The `legacy/` directory contains the archived earlier prototype. The active implementation is maintained in the main project directories.
+> 📦 The `legacy/` directory contains the archived earlier prototype. The active implementation is maintained in the main project directories.
 
-## Roadmap
+---
 
-- [x] Clean project structure and repository history (M0)
-- [x] Versioned data contract (M1)
-- [x] FastAPI backend and scans API (M1)
-- [x] Chrome extension consent flow (M1)
-- [x] Hostname-based website visit capture (M1)
-- [x] Dashboard visit history (M1)
-- [x] Backend and extension tests (M1)
-- [x] Third-party tracker detection (M2a)
-- [x] Cookie counts and referrer-origin collection (M2b)
-- [x] Canvas and WebGL API observation (M2c)
-- [x] Audio and font-measuring API observation (M2c)
-- [x] Geolocation API call observation (M2c)
-- [x] Script-set cookie observation and hash-based deduplication (M2c)
-- [x] Consent v4 and dynamic in-page script registration (M2c)
+## 🗺️ Roadmap
+
+### 🧹 M0 – Repository Foundation
+
+- [x] Clean project structure and repository history
+
+### 📜 M1 – Contract and Application Skeleton
+
+- [x] Versioned data contract
+- [x] FastAPI backend and scans API
+- [x] Chrome extension consent flow
+- [x] Hostname-based website visit capture
+- [x] Dashboard visit history
+- [x] Backend and extension tests
+
+### 🕵️ M2a – Tracker Detection
+
+- [x] Third-party tracker detection
+- [x] Tracker signal collection
+- [x] Tracker dashboard display
+
+### 🍪 M2b – Cookie and Referrer Signals
+
+- [x] Cookie counts
+- [x] Referrer-origin collection
+- [x] Cookie signal handling
+
+### 🧠 M2c – In-Page Privacy Signals
+
+- [x] Canvas and WebGL API observation
+- [x] Audio and font-measuring API observation
+- [x] Geolocation API call observation
+- [x] Script-set cookie observation and hash-based deduplication
+- [x] Consent v4 and dynamic in-page script registration
 - [x] M2c merged into `main` and tagged `v0.2-m2c`
-- [ ] Backend store improvements and data retention (M3)
-- [ ] Develop and validate a transparent Privacy Score (M3)
-- [ ] Improve unknown-versus-clean signal reporting (M3)
-- [ ] Improve early-request attribution (M3)
-- [ ] Develop dashboard visualizations and filtering (M4)
-- [ ] Implement threat and trust analysis (M5)
-- [ ] Develop intelligence and recommendation features (M6)
-- [ ] Develop Data Ownership Mapping (M7)
-- [ ] Strengthen security, performance, and documentation (M8)
-- [ ] Complete evaluation and prepare the v1.0 release (M8)
 
-## Why PriviLens Exists
+### ⚙️ M3 – Backend, Privacy Score and Signal Improvements
+
+- [x] M3a – Early-request attribution
+- [x] M3b – Backend store improvements and data retention
+- [ ] M3c – Develop and validate a transparent Privacy Score
+- [ ] Improve unknown-versus-clean signal reporting
+- [ ] Develop and validate privacy score endpoints
+
+### 📊 M4 – Dashboard Visualizations and Filtering
+
+- [ ] Dashboard visualizations
+- [ ] Filtering and improved privacy signal presentation
+
+### 🛡️ M5 – Threat and Trust Analysis
+
+- [ ] Implement threat and trust analysis
+
+### 💡 M6 – Intelligence and Recommendations
+
+- [ ] Develop intelligence and recommendation features
+
+### 🗺️ M7 – Data Ownership Mapping
+
+- [ ] Develop Data Ownership Mapping
+
+### 🚀 M8 – Security, Performance and v1.0
+
+- [ ] Strengthen security
+- [ ] Improve performance
+- [ ] Complete documentation
+- [ ] Complete evaluation
+- [ ] Prepare the v1.0 release
+
+---
+
+## 🌱 Why PriviLens Exists
 
 Modern websites interact with users and collect information in ways that are not always immediately visible.
 
@@ -245,6 +523,14 @@ Invisible to Visible aims to make these activities easier to understand through 
 
 The long-term goal is to develop a privacy-awareness and security intelligence platform that helps users better understand their digital exposure.
 
-**The goal is to turn invisible digital activity into visible, understandable information.**
+<p align="center">
+  <strong>🔍 Turning invisible digital activity into visible, understandable information.</strong>
+</p>
 
-Feedback and suggestions are welcome!
+---
+
+## 💬 Feedback
+
+Feedback, suggestions and contributions are welcome!
+
+</details></details>
