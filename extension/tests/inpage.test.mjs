@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  acceptSender, sanitizeInpage, isUsableCookieName, INPAGE_TYPE, MAX_BATCH_COUNT, MAX_NAMES, MAX_NAME_LENGTH,
+  acceptSender, sanitizeInpage, isHeartbeat, isUsableCookieName, INPAGE_TYPE, MAX_BATCH_COUNT, MAX_NAMES, MAX_NAME_LENGTH,
 } from "../lib/inpage.js";
 
 const msg = (extra = {}) => ({ type: INPAGE_TYPE, v: 1, ...extra });
@@ -56,12 +56,26 @@ test("unknown fields, such as a made-up host, are dropped", () => {
 
 test("only our own extension's messages from a real tab are accepted, and the sender is read from Chrome's fields", () => {
   const good = { id: "abc", tab: { id: 7 }, frameId: 3, url: "https://x.example/p" };
-  assert.deepEqual(acceptSender(good, "abc"), { tabId: 7, frameId: 3, url: "https://x.example/p" });
+  assert.deepEqual(acceptSender(good, "abc"), { tabId: 7, frameId: 3, url: "https://x.example/p", documentId: null });
   assert.equal(acceptSender({ ...good, id: "someone-else" }, "abc"), null);       // another extension
   assert.equal(acceptSender({ ...good, id: undefined }, "abc"), null);
   assert.equal(acceptSender({ id: "abc", url: "chrome-extension://abc/popup.html" }, "abc"), null); // not from a tab
   assert.equal(acceptSender({ ...good, tab: { id: -1 } }, "abc"), null);
   assert.equal(acceptSender({ ...good, tab: { id: "7" } }, "abc"), null);
   assert.equal(acceptSender(null, "abc"), null);
-  assert.deepEqual(acceptSender({ id: "abc", tab: { id: 1 } }, "abc"), { tabId: 1, frameId: 0, url: "" });
+  assert.deepEqual(acceptSender({ id: "abc", tab: { id: 1 } }, "abc"), { tabId: 1, frameId: 0, url: "", documentId: null });
+});
+
+test("isHeartbeat accepts only the exact one-line message", () => {
+  assert.equal(isHeartbeat({ type: INPAGE_TYPE, v: 1, hb: 1 }), true);
+  for (const bad of [null, undefined, 1, "hb", [], {}, { type: INPAGE_TYPE, v: 1 }, { type: INPAGE_TYPE, v: 1, hb: true }, { type: INPAGE_TYPE, v: 1, hb: 2 }, { type: "other", v: 1, hb: 1 }, { type: INPAGE_TYPE, v: 2, hb: 1 }]) {
+    assert.equal(isHeartbeat(bad), false);
+  }
+  assert.equal(sanitizeInpage({ type: INPAGE_TYPE, v: 1, hb: 1 }), null); // a heartbeat reports no counts
+});
+
+test("acceptSender passes on Chrome's documentId, and only a real string", () => {
+  const base = { id: "abc", tab: { id: 7 }, frameId: 0, url: "https://x.example/" };
+  assert.equal(acceptSender({ ...base, documentId: "D-1" }, "abc").documentId, "D-1");
+  for (const bad of [undefined, null, "", 5, {}, []]) assert.equal(acceptSender({ ...base, documentId: bad }, "abc").documentId, null);
 });

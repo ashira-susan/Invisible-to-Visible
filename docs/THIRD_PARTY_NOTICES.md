@@ -21,6 +21,16 @@ This project bundles two data files inside the browser extension. Neither is our
 - **Licence:** Mozilla Public License 2.0 (<https://mozilla.org/MPL/2.0/>), stated at the top of the file.
 - **Purpose:** decides which part of a hostname is the "site", so `news.bbc.co.uk` and `bbc.co.uk` are first-party to each other while two different `.co.uk` sites are not.
 
+## Public Suffix List test cases
+
+- **File used:** `docs/psl-test-cases.json`, derived from Mozilla's `tests/test_psl.txt` (<https://github.com/publicsuffix/list/blob/master/tests/test_psl.txt>).
+- **Licence:** released to the public domain (Creative Commons CC0 1.0, stated at the top of the file).
+- **What we changed:** hostnames are lowercased and converted to ASCII, and the cases whose official answer is "none" (the name is itself a public suffix, or a single label) are listed separately because our implementations return the hostname unchanged. Both `extension/lib/psl.js` and `backend/itv/psl.py` are tested against it.
+
+## Tracker product notes
+
+- **File:** `backend/itv/knowledge/tracker_products.json`, ported from this project's own earlier prototype (`legacy/backend/knowledge_base.py`). It is editorial and unverified, so it is context only, never a finding.
+
 ## Refreshing the data
 
 ```

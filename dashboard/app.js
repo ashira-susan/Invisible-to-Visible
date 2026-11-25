@@ -89,6 +89,10 @@ function cookieSentence(c) {
 }
 
 function inpageSentence(s) {
+  // Zero counts are only "nothing observed" if the page scripts actually ran in this page.
+  if (!s.inpage_checked) {
+    return "Page-script calls (canvas, WebGL, audio, font measuring, location) weren't checked for this visit: the page was already open when the page scripts became active, or they didn't run. That doesn't mean there were none.";
+  }
   const f = s.fingerprinting;
   const parts = [];
   if (f.canvas > 0) parts.push(plural(f.canvas, "canvas read-back", "canvas read-backs"));

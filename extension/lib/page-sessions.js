@@ -5,14 +5,28 @@
 import { cleanHostname, siteFromUrl } from "./summary.js";
 import { parseSetCookie, cookieKey } from "./cookies.js";
 import { SETTLE_MS } from "./config.js";
-import { sanitizeInpage } from "./inpage.js";
+import { sanitizeInpage, isHeartbeat } from "./inpage.js";
 
 export const MAX_TRACKERS = 200;
 const MAX_COUNT = 100_000;
 const MAX_COOKIE_KEYS = 2_000;
 const PENDING_TTL_MS = 3_000;
 const PENDING_MAX = 100;
-const REFERRER_TTL_MS = 30_000;
+const NAV_TTL_MS = 30_000; // how long a navigation may stay "in progress" before it is forgotten
+
+// A short one-way fingerprint of a page address with its #fragment removed. It is used
+// only to check "is the page that just committed the one this navigation was heading
+// to?" so the address itself is never kept, not even in memory.
+function urlKey(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    url.hash = "";
+    return cookieKey("navigation", url.href);
+  } catch {
+    return null;
+  }
+}
 
 export class PageSessions {
   /**
@@ -34,8 +48,13 @@ export class PageSessions {
     this.cancel = (id) => cancel(id);
 
     this.pages = new Map(); // tabId -> page
-    this.pending = new Map(); // tabId -> [item]  requests and cookies seen just before the page started
-    this.referrers = new Map(); // tabId -> { origin, host, t }  from the page's own navigation request
+    // A tab's "navigation in progress", from its first top-level request until the page
+    // commits. Events are only held for a page that has not started yet while one is in
+    // progress; with none, they are dropped (a late beacon from the page we left must never
+    // be given to the next page). Kept in memory only: after a worker restart mid-navigation
+    // the events are simply missed, which can only undercount.
+    this.navs = new Map(); // tabId -> { requestId, key, referrer, t }
+    this.pending = new Map(); // tabId -> [item]  events held during the navigation in progress
     this.timers = new Map(); // tabId -> timer
     this.seq = 0;
     this.persistTimer = null;
@@ -48,14 +67,20 @@ export class PageSessions {
       page.referrer ??= null;
       page.fp ??= { canvas: 0, webgl: 0, audio: 0, font: 0 };
       page.geo ??= 0;
+      page.documentId ??= null;
+      page.inpage ??= false; // saved by an older version: unknown, so "not checked"
       this.pages.set(Number(tabId), page);
       this.seq = Math.max(this.seq, page.seq ?? 0);
       this.#arm(Number(tabId), page);
     }
   }
 
-  /** A top-level page was committed in a tab. */
-  async start(tabId, rawUrl) {
+  /**
+   * A top-level page was committed in a tab. `documentId` is Chrome's id for the committed
+   * document (webNavigation.onCommitted); held events are only given to the new page when
+   * Chrome says they came from that very document (see #belongsTo).
+   */
+  async start(tabId, rawUrl, documentId = null) {
     // Leaving the previous page ends its visit. finalize() removes that page at once
     // (before its first await), so the tab has no "current page" from here on and
     // the new one can take over without waiting for the old summary to be sent. This
@@ -63,11 +88,14 @@ export class PageSessions {
     // page-script reports arrive in that time. They must reach the new page.
     const finishing = this.finalize(tabId);
 
-    // Read what was seen a moment ago only now, after the old page is gone.
+    // Read what was held during this navigation only now, after the old page is gone.
+    const nav = this.#navigating(tabId);
     const early = this.pending.get(tabId) ?? [];
     this.pending.delete(tabId);
-    const arrivedFrom = this.referrers.get(tabId);
-    this.referrers.delete(tabId);
+    this.navs.delete(tabId);
+    // The navigation's own events (its response cookies, its Referer) belong to this page
+    // only if the page that committed is the page the navigation was heading to.
+    const sameNavigation = nav !== null && nav.key !== null && nav.key === urlKey(rawUrl);
 
     const site = siteFromUrl(rawUrl);
     if (!site) {
@@ -87,11 +115,13 @@ export class PageSessions {
       referrer: null, // origin only, e.g. https://www.google.com
       fp: { canvas: 0, webgl: 0, audio: 0, font: 0 }, // calls observed by the page-world hooks (best effort)
       geo: 0,
+      documentId: typeof documentId === "string" && documentId !== "" ? documentId : null, // Chrome's id for this document
+      inpage: false, // true once the page scripts reported (heartbeat) from this document's top frame
     };
     this.pages.set(tabId, page);
 
     for (const item of early) {
-      if (page.startedAt - item.t > PENDING_TTL_MS) continue;
+      if (!this.#belongsTo(item, { sameNavigation, documentId: page.documentId })) continue;
       if (item.kind === "cookies") this.#recordCookies(page, item.host, item.keys);
       else if (item.kind === "inpage") {
         // A late report from the page we just left: its top frame is another site.
@@ -101,9 +131,9 @@ export class PageSessions {
     }
 
     // Arriving from another site is worth knowing; arriving from the same site is not.
-    if (arrivedFrom && page.startedAt - arrivedFrom.t <= REFERRER_TTL_MS) {
-      const fromSite = this.psl.registrableDomain(arrivedFrom.host) ?? arrivedFrom.host;
-      if (fromSite !== page.site) page.referrer = arrivedFrom.origin;
+    if (sameNavigation && nav.referrer) {
+      const fromSite = this.psl.registrableDomain(nav.referrer.host) ?? nav.referrer.host;
+      if (fromSite !== page.site) page.referrer = nav.referrer.origin;
     }
 
     this.#arm(tabId, page);
@@ -111,8 +141,29 @@ export class PageSessions {
     await finishing; // callers still wait until the previous page has been handed over
   }
 
-  /** A sub-resource request (script, image, frame, ...) was made by a tab. */
-  addRequest(tabId, rawUrl) {
+  /**
+   * A top-level navigation request was made in a tab (webRequest, type main_frame).
+   * Redirect hops of one navigation share Chrome's requestId; a different requestId is a
+   * new navigation, and whatever was held for the old one is dropped with it.
+   */
+  noteMainRequest(tabId, requestId, rawUrl) {
+    const key = urlKey(rawUrl);
+    if (key === null || typeof requestId !== "string" || requestId === "") return;
+    const nav = this.navs.get(tabId);
+    if (nav && nav.requestId === requestId && this.now() - nav.t <= NAV_TTL_MS) {
+      nav.key = key; // a redirect hop: the final hop's address is the one that commits
+      return;
+    }
+    this.pending.delete(tabId);
+    this.navs.set(tabId, { requestId, key, referrer: null, t: this.now() });
+  }
+
+  /**
+   * A sub-resource request (script, image, frame, ...) was made by a tab.
+   * `meta` = { documentId, parentDocumentId, documentLifecycle, frameId } as Chrome
+   * reports them for the request.
+   */
+  addRequest(tabId, rawUrl, meta = {}) {
     let host;
     try {
       const url = new URL(rawUrl);
@@ -125,18 +176,20 @@ export class PageSessions {
 
     const page = this.pages.get(tabId);
     if (page) {
+      if (this.#fromAnotherDocument(page, meta)) return;
       this.#record(page, host);
       this.#persistSoon();
       return;
     }
-    this.#hold(tabId, { kind: "request", host });
+    this.#holdForDocument(tabId, { kind: "request", host }, meta);
   }
 
   /**
    * A response set cookies. `setCookieHeaders` are the raw Set-Cookie values; they are
    * reduced to hashed keys immediately and the values are dropped.
+   * `meta` = { mainFrame, requestId, documentId, frameId } as Chrome reports them.
    */
-  addCookies(tabId, rawUrl, setCookieHeaders) {
+  addCookies(tabId, rawUrl, setCookieHeaders, meta = {}) {
     let host;
     try {
       const url = new URL(rawUrl);
@@ -154,13 +207,24 @@ export class PageSessions {
     }
     if (keys.length === 0) return;
 
+    // A top-level response is part of a navigation, never of the page still on screen while
+    // the new one loads. It is held for the navigation it belongs to (same requestId) and
+    // dropped when that cannot be established.
+    if (meta.mainFrame === true) {
+      const nav = this.#navigating(tabId);
+      if (!nav || typeof meta.requestId !== "string" || nav.requestId !== meta.requestId) return;
+      this.#hold(tabId, { kind: "cookies", host, keys, owner: "navigation" });
+      return;
+    }
+
     const page = this.pages.get(tabId);
     if (page) {
+      if (this.#fromAnotherDocument(page, meta)) return;
       this.#recordCookies(page, host, keys);
       this.#persistSoon();
       return;
     }
-    this.#hold(tabId, { kind: "cookies", host, keys });
+    this.#holdForDocument(tabId, { kind: "cookies", host, keys }, meta);
   }
 
   /**
@@ -172,9 +236,10 @@ export class PageSessions {
    * Cookie names are hashed right here, before anything is held or stored, so only
    * hashes ever sit in memory or in session storage.
    */
-  addInpage(tabId, frameId, senderUrl, raw) {
+  addInpage(tabId, frameId, senderUrl, raw, documentId = null) {
     const clean = sanitizeInpage(raw);
-    if (!clean) return;
+    const heartbeat = isHeartbeat(raw) && frameId === 0; // "the page scripts ran here": top frame only
+    if (!clean && !heartbeat) return;
 
     // The frame's host, or null for about:blank / srcdoc / anything else with no
     // trustworthy host. Without a host, its cookie names are dropped (counts still count).
@@ -185,22 +250,27 @@ export class PageSessions {
     // A late message from the page we just left must not land on the new page.
     if (page && frameId === 0 && host !== null && host !== page.host) return;
 
-    const keys = host ? clean.names.map((name) => cookieKey(host, name)) : [];
-    const item = { kind: "inpage", frameId, host, keys, fp: clean.fingerprinting, geo: clean.geolocation };
+    const keys = host && clean ? clean.names.map((name) => cookieKey(host, name)) : [];
+    const fp = clean ? clean.fingerprinting : { canvas: 0, webgl: 0, audio: 0, font: 0 };
+    const item = { kind: "inpage", frameId, host, keys, fp, geo: clean ? clean.geolocation : 0, hb: heartbeat };
 
     if (page) {
+      // The heartbeat is believed only when it comes from this very document: a late one
+      // from the page we left (even on the same site) must not make this page look checked.
+      item.hb = heartbeat && documentId !== null && documentId === page.documentId;
       this.#recordInpage(page, item);
       this.#persistSoon();
       return;
     }
-    this.#hold(tabId, item);
+    this.#holdForDocument(tabId, item, { documentId, frameId });
   }
 
   /**
    * The page's own navigation request carried a Referer header. Only the origin is kept.
-   * Called before the page starts, so it waits here for start() to pick it up.
+   * Called before the page starts, so it waits (with the navigation) for start() to pick
+   * it up. `requestId` must be the navigation's own request.
    */
-  setReferrer(tabId, rawReferer) {
+  setReferrer(tabId, rawReferer, requestId = null) {
     let origin;
     let host;
     try {
@@ -212,9 +282,10 @@ export class PageSessions {
     } catch {
       return;
     }
-    const existing = this.referrers.get(tabId);
-    if (existing && this.now() - existing.t <= REFERRER_TTL_MS) return; // keep the first hop's referrer
-    this.referrers.set(tabId, { origin, host, t: this.now() });
+    const nav = this.#navigating(tabId);
+    if (!nav || typeof requestId !== "string" || nav.requestId !== requestId) return; // not this navigation's request
+    if (nav.referrer) return; // keep the first hop's referrer
+    nav.referrer = { origin, host };
   }
 
   /** The visit is over (settled, navigated away, or tab closed). Safe to call twice. */
@@ -234,7 +305,7 @@ export class PageSessions {
   /** The tab was closed: finish its page and forget anything waiting for it. */
   async closeTab(tabId) {
     this.pending.delete(tabId);
-    this.referrers.delete(tabId);
+    this.navs.delete(tabId);
     await this.finalize(tabId);
   }
 
@@ -263,6 +334,7 @@ export class PageSessions {
     const fp = page.fp ?? { canvas: 0, webgl: 0, audio: 0, font: 0 };
     return {
       trackers_checked: true,
+      inpage_checked: page.inpage === true, // false = the page scripts never reported: zeros mean "not checked"
       third_party_requests: Math.min(page.thirdParty, MAX_COUNT),
       trackers,
       cookies: {
@@ -306,6 +378,7 @@ export class PageSessions {
   }
 
   #recordInpage(page, item) {
+    if (item.hb) page.inpage = true;
     for (const name of ["canvas", "webgl", "audio", "font"]) {
       page.fp[name] = Math.min(page.fp[name] + item.fp[name], MAX_COUNT);
     }
@@ -315,9 +388,69 @@ export class PageSessions {
     if (item.host && item.keys.length > 0) this.#recordCookies(page, item.host, item.keys);
   }
 
+  /**
+   * Is this request or response from a document that is not the page on screen?
+   * Chrome keeps pages you have left in its back/forward cache, and their frozen frames
+   * can still send requests right after the next page commits (seen in Chrome: ~30
+   * requests from the previous page's ad frames, marked documentLifecycle "cached"). Two
+   * things identify them, and anything else is given the benefit of the doubt:
+   *  - a lifecycle other than "active" (cached, pending deletion, prerender);
+   *  - a top-level document (no parent) whose id is not the committed page's id. Chrome's
+   *    ids were checked in Chrome: a top-frame request carries the id onCommitted gave.
+   * Sub-frames whose parent is deeper than one level cannot be tied to a page this way.
+   */
+  #fromAnotherDocument(page, meta) {
+    if (typeof meta.documentLifecycle === "string" && meta.documentLifecycle !== "active") return true;
+    const own = typeof meta.documentId === "string" && meta.documentId !== "";
+    const hasParent = typeof meta.parentDocumentId === "string" && meta.parentDocumentId !== "";
+    return page.documentId !== null && page.documentId !== undefined && own && !hasParent && meta.documentId !== page.documentId;
+  }
+
+  /** The tab's navigation in progress, or null (also forgets one that has gone stale). */
+  #navigating(tabId) {
+    const nav = this.navs.get(tabId);
+    if (!nav) return null;
+    if (this.now() - nav.t > NAV_TTL_MS) {
+      this.navs.delete(tabId);
+      this.pending.delete(tabId);
+      return null;
+    }
+    return nav;
+  }
+
+  /**
+   * Holds an event that came from a document (not from the navigation request itself) for a
+   * page that has not started yet, together with the document Chrome says made it. With no
+   * navigation in progress there is nothing it could belong to, so it is dropped.
+   */
+  #holdForDocument(tabId, item, meta) {
+    if (!this.#navigating(tabId)) return;
+    this.#hold(tabId, {
+      ...item,
+      owner: "document",
+      docId: typeof meta.documentId === "string" && meta.documentId !== "" ? meta.documentId : null,
+      frameId: Number.isInteger(meta.frameId) ? meta.frameId : null,
+    });
+  }
+
+  /**
+   * May a held event be given to the page that just committed? Only when its attribution is
+   * certain; anything ambiguous is dropped (an undercount, never a misattribution).
+   *  - the navigation's own events (response cookies, Referer): only if the committed page
+   *    is the page that navigation was heading to;
+   *  - events from a document: only from the top frame, and only if Chrome's documentId for
+   *    the event is the committed document's. Sub-frame events cannot be tied to the new
+   *    page this way and are dropped.
+   */
+  #belongsTo(item, { sameNavigation, documentId }) {
+    if (item.owner === "navigation") return sameNavigation;
+    if (this.now() - item.t > PENDING_TTL_MS) return false;
+    return documentId !== null && item.docId === documentId && item.frameId === 0;
+  }
+
   #hold(tabId, item) {
     const t = this.now();
-    const fresh = (this.pending.get(tabId) ?? []).filter((r) => t - r.t <= PENDING_TTL_MS);
+    const fresh = (this.pending.get(tabId) ?? []).filter((r) => r.owner === "navigation" || t - r.t <= PENDING_TTL_MS);
     fresh.push({ ...item, t });
     this.pending.set(tabId, fresh.slice(-PENDING_MAX));
   }

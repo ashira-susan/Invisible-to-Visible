@@ -131,6 +131,15 @@ def test_detail_returns_the_trackers(client):
     assert detail["signals"]["cookies"] == {"first_party": 0, "third_party": 0, "by_trackers": 0}
 
 
+def test_detail_says_whether_the_page_scripts_were_checked(client):
+    checked = _scan_with_trackers()
+    checked["signals"]["inpage_checked"] = True
+    a = client.post("/api/v1/scans", json=checked, headers=headers()).json()
+    b = client.post("/api/v1/scans", json=_scan_with_trackers(), headers=headers()).json()  # older extension: no field
+    assert client.get(f"/api/v1/scans/{a['id']}", headers=headers()).json()["signals"]["inpage_checked"] is True
+    assert client.get(f"/api/v1/scans/{b['id']}", headers=headers()).json()["signals"]["inpage_checked"] is False
+
+
 def test_detail_of_another_installs_scan_is_not_found(client):
     created = client.post("/api/v1/scans", json=_scan_with_trackers(), headers=headers(INSTALL_A)).json()
     assert client.get(f"/api/v1/scans/{created['id']}", headers=headers(INSTALL_B)).status_code == 404

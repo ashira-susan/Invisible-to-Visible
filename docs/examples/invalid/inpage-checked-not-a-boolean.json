@@ -1,0 +1,12 @@
+{
+  "schema_version": "1",
+  "observed_at": "2026-11-05T10:30:00.000Z",
+  "site": {
+    "domain": "testpage.example",
+    "https": true
+  },
+  "signals": {
+    "trackers_checked": true,
+    "inpage_checked": "maybe"
+  }
+}

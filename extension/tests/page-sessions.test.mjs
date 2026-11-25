@@ -32,6 +32,9 @@ function setup(overrides = {}) {
   return { sessions, clock, timers, finished, stored };
 }
 
+// The tab's navigation as the worker sees it: the page's own request, then (later) the commit.
+const nav = (sessions, tabId, url, requestId = "r1") => sessions.noteMainRequest(tabId, requestId, url);
+
 test("counts third-party requests and ignores first-party ones", async () => {
   const { sessions, finished } = setup();
   await sessions.start(1, "https://www.news.example/story/42?id=7");
@@ -84,20 +87,22 @@ test("nothing from the page address except host and https is kept", async () => 
   assert.equal([...sessions.pages.values()][0].host, "mail.site.example");
 });
 
-test("requests that arrive just before the page starts are replayed into it", async () => {
+test("a request made by the new page's own document just before it commits is replayed into it", async () => {
   const { sessions, finished, clock } = setup();
-  sessions.addRequest(1, "https://px.ads.test/early");
+  nav(sessions, 1, "https://site.example/");
+  sessions.addRequest(1, "https://px.ads.test/early", { documentId: "doc-B", frameId: 0 });
   clock.t += 500;
-  await sessions.start(1, "https://site.example/");
+  await sessions.start(1, "https://site.example/", "doc-B");
   await sessions.finalize(1);
   assert.equal(PageSessions.toSignals(finished[0]).third_party_requests, 1);
 });
 
 test("old pending requests are not replayed", async () => {
   const { sessions, finished, clock } = setup();
-  sessions.addRequest(1, "https://px.ads.test/old");
+  nav(sessions, 1, "https://site.example/");
+  sessions.addRequest(1, "https://px.ads.test/old", { documentId: "doc-B", frameId: 0 });
   clock.t += 10_000;
-  await sessions.start(1, "https://site.example/");
+  await sessions.start(1, "https://site.example/", "doc-B");
   await sessions.finalize(1);
   assert.equal(PageSessions.toSignals(finished[0]).third_party_requests, 0);
 });
@@ -190,11 +195,14 @@ test("the tracker list is capped", async () => {
 test("closing a tab finishes its page and forgets waiting requests", async () => {
   const { sessions, finished } = setup();
   await sessions.start(1, "https://site.example/");
-  sessions.addRequest(2, "https://px.ads.test/for-another-tab");
+  nav(sessions, 2, "https://other.example/");
+  sessions.addRequest(2, "https://px.ads.test/for-another-tab", { documentId: "doc-X", frameId: 0 });
+  assert.equal(sessions.pending.size, 1);
   await sessions.closeTab(1);
   await sessions.closeTab(2);
   assert.equal(finished.length, 1);
   assert.equal(sessions.pending.size, 0);
+  assert.equal(sessions.navs.size, 0);
 });
 
 
@@ -224,9 +232,10 @@ test("the same cookie set twice is counted once; deleting a cookie is not settin
 
 test("cookies from the page's own response (which arrives before the page starts) are counted", async () => {
   const { sessions, finished, clock } = setup();
-  sessions.addCookies(1, "https://www.shop.example/", ["sid=1"]);
+  nav(sessions, 1, "https://www.shop.example/");
+  sessions.addCookies(1, "https://www.shop.example/", ["sid=1"], { mainFrame: true, requestId: "r1" });
   clock.t += 400;
-  await sessions.start(1, "https://www.shop.example/");
+  await sessions.start(1, "https://www.shop.example/", "doc-B");
   await sessions.finalize(1);
   assert.equal(PageSessions.toSignals(finished[0]).cookies.first_party, 1);
 });
@@ -244,7 +253,8 @@ test("cookie names and values are never stored or sent, only hashes", async () =
 
 test("the referrer is kept as an origin only", async () => {
   const { sessions } = setup();
-  sessions.setReferrer(1, "https://www.google.com/search?q=my+private+query&hl=en#top");
+  nav(sessions, 1, "https://shop.example/");
+  sessions.setReferrer(1, "https://www.google.com/search?q=my+private+query&hl=en#top", "r1");
   await sessions.start(1, "https://shop.example/");
   assert.equal(sessions.pages.get(1).referrer, "https://www.google.com");
   const text = JSON.stringify([...sessions.pages.values()]);
@@ -253,7 +263,8 @@ test("the referrer is kept as an origin only", async () => {
 
 test("a referrer from the same site is dropped", async () => {
   const { sessions } = setup();
-  sessions.setReferrer(1, "https://www.shop.example/category/shoes");
+  nav(sessions, 1, "https://shop.example/product/9");
+  sessions.setReferrer(1, "https://www.shop.example/category/shoes", "r1");
   await sessions.start(1, "https://shop.example/product/9");
   assert.equal(sessions.pages.get(1).referrer, null);
 });
@@ -263,15 +274,17 @@ test("no referrer means null, and an old referrer is not reused for a later page
   await sessions.start(1, "https://typed.example/");
   assert.equal(sessions.pages.get(1).referrer, null);
 
-  sessions.setReferrer(1, "https://www.google.com/");
-  clock.t += 60_000; // far too long ago
+  nav(sessions, 1, "https://late.example/");
+  sessions.setReferrer(1, "https://www.google.com/", "r1");
+  clock.t += 60_000; // the navigation never committed in time: far too long ago
   await sessions.start(1, "https://late.example/");
   assert.equal(sessions.pages.get(1).referrer, null);
 });
 
 test("a referrer is used once, by the page it was meant for", async () => {
   const { sessions } = setup();
-  sessions.setReferrer(1, "https://news.example/front");
+  nav(sessions, 1, "https://first.example/");
+  sessions.setReferrer(1, "https://news.example/front", "r1");
   await sessions.start(1, "https://first.example/");
   await sessions.start(1, "https://second.example/");
   assert.equal(sessions.pages.get(1).referrer, null);
@@ -279,7 +292,8 @@ test("a referrer is used once, by the page it was meant for", async () => {
 
 test("junk referrers are ignored", async () => {
   const { sessions } = setup();
-  for (const bad of ["", "not a url", "ftp://x.example/", "https://[::1]/", "javascript:alert(1)"]) sessions.setReferrer(1, bad);
+  nav(sessions, 1, "https://site.example/");
+  for (const bad of ["", "not a url", "ftp://x.example/", "https://[::1]/", "javascript:alert(1)"]) sessions.setReferrer(1, bad, "r1");
   await sessions.start(1, "https://site.example/");
   assert.equal(sessions.pages.get(1).referrer, null);
 });
@@ -385,11 +399,12 @@ test("a late message from the page the tab just left is dropped; a subframe's is
 
 test("messages that arrive just before the page starts are kept, old ones are not", async () => {
   const { sessions, finished, clock } = setup();
-  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 2, cookies: ["early"] }));
+  nav(sessions, 1, SHOP);
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 2, cookies: ["early"] }), "doc-B");
   clock.t += 4_000; // older than the 3 s window
-  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 1 }));
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 1 }), "doc-B");
   clock.t += 400;
-  await sessions.start(1, SHOP);
+  await sessions.start(1, SHOP, "doc-B");
   await sessions.finalize(1);
   const signals = PageSessions.toSignals(finished[0]);
   assert.equal(signals.fingerprinting.canvas, 1); // only the fresh one
@@ -398,7 +413,8 @@ test("messages that arrive just before the page starts are kept, old ones are no
 
 test("early page-world messages for a page that never starts are forgotten when the tab closes", async () => {
   const { sessions } = setup();
-  sessions.addInpage(5, 0, SHOP, inpage({ canvas: 2, cookies: ["x"] }));
+  nav(sessions, 5, SHOP);
+  sessions.addInpage(5, 0, SHOP, inpage({ canvas: 2, cookies: ["x"] }), "doc-B");
   assert.equal(sessions.pending.size, 1);
   await sessions.closeTab(5);
   assert.equal(sessions.pending.size, 0);
@@ -406,9 +422,10 @@ test("early page-world messages for a page that never starts are forgotten when 
 
 test("cookie names are hashed on arrival: they are never held, stored or sent", async () => {
   const { sessions, finished, stored } = setup();
-  sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["unique_pending_name"] }));      // held before the page starts
+  nav(sessions, 1, SHOP);
+  sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["unique_pending_name"] }), "doc-B"); // held before the page starts
   assert.ok(!JSON.stringify([...sessions.pending.values()]).includes("unique_pending_name"), "name held in the pending buffer");
-  await sessions.start(1, SHOP);
+  await sessions.start(1, SHOP, "doc-B");
   sessions.addInpage(1, 0, SHOP, inpage({ cookies: ["unique_live_name"], canvas: 1 }));
   await sessions.flush();
   assert.ok(!JSON.stringify(stored.value).includes("unique_"), "name reached session storage");
@@ -489,13 +506,15 @@ test("requests, cookies and page-script reports that arrive while the previous p
   assert.equal(finished.find((p) => p.host === "old.example").fp.canvas, 0); // none of it landed on the old page
 });
 
-test("a held report from another site's top frame is not given to the page that starts next", async () => {
+test("a held report from another site's top frame, or from a sub-frame, is not given to the page that starts next", async () => {
   const { sessions, finished } = setup();
-  sessions.addInpage(1, 0, "https://old.example/", inpage({ canvas: 5 }));       // the page we just left
-  sessions.addInpage(1, 9, "https://embed.example/", inpage({ canvas: 2 }));     // some subframe: kept
-  await sessions.start(1, SHOP);
+  nav(sessions, 1, SHOP);
+  sessions.addInpage(1, 0, "https://old.example/", inpage({ canvas: 5 }), "doc-B"); // top frame of another site (even with the new id)
+  sessions.addInpage(1, 9, "https://embed.example/", inpage({ canvas: 2 }), "doc-B"); // a sub-frame cannot be tied to the new page
+  sessions.addInpage(1, 0, SHOP, inpage({ canvas: 1 }), "doc-B");                     // the new page's own top frame
+  await sessions.start(1, SHOP, "doc-B");
   await sessions.finalize(1);
-  assert.equal(PageSessions.toSignals(finished[0]).fingerprinting.canvas, 2);
+  assert.equal(PageSessions.toSignals(finished[0]).fingerprinting.canvas, 1);
 });
 
 // ---- timers: Chrome only accepts setTimeout/clearTimeout called as plain functions -----

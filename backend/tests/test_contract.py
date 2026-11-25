@@ -34,6 +34,18 @@ def test_invalid_examples_are_rejected(path):
         ScanSummary.model_validate(load(path))
 
 
+def test_inpage_checked_defaults_to_false_and_rejects_non_booleans():
+    summary = ScanSummary.model_validate(load(EXAMPLES / "valid" / "m2c-inpage.json"))  # written before the field existed
+    assert summary.signals.inpage_checked is False  # an older sender: page-script counts are unknown, not clean
+    body = load(EXAMPLES / "valid" / "m2c-inpage.json")
+    body["signals"]["inpage_checked"] = True
+    assert ScanSummary.model_validate(body).signals.inpage_checked is True
+    for bad in ("maybe", [], {}, 7):
+        body["signals"]["inpage_checked"] = bad
+        with pytest.raises(ValidationError):
+            ScanSummary.model_validate(body)
+
+
 def test_signals_default_to_zero_when_omitted():
     summary = ScanSummary.model_validate(load(EXAMPLES / "valid" / "minimal.json"))
     assert summary.signals.third_party_requests == 0
