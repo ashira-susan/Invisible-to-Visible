@@ -44,6 +44,7 @@ def test_a_posted_visit_gets_its_derived_columns_and_tracker_rows(client):
 def test_the_list_and_detail_answers_are_unchanged(client):
     created = client.post("/api/v1/scans", json=with_trackers(), headers=headers()).json()
     listed = client.get("/api/v1/scans", headers=headers()).json()["scans"][0]
+    assert isinstance(listed.pop("privacy_score"), int)       # added in M3c; everything else is as before
     assert listed == {"id": created["id"], "domain": "example.com", "https": True, "observed_at": "2026-10-01T09:15:00Z",
                       "third_party_requests": 5, "tracker_count": 2, "third_party_cookies": 2, "trackers_checked": True}
     detail = client.get(f"/api/v1/scans/{created['id']}", headers=headers()).json()

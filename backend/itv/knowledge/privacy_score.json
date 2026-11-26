@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "about": "Weights for the Privacy Score (higher is better, 0 to 100). Every factor starts at no penalty and grows with diminishing returns up to a cap: penalty = cap * (1 - exp(-n * points_each / cap)). Adding one more tracker, cookie, request or call therefore never raises the score and never lowers it by more than points_each. The score is 100 minus the total penalty, rounded and kept within 0 to 100. Changing any number here changes `version`, and scores are always computed when read, never stored.",
+  "bands": [
+    { "key": "heavy_tracking", "label": "Heavy tracking observed", "max": 40 },
+    { "key": "some_tracking", "label": "Some tracking observed", "max": 70 },
+    { "key": "little_tracking", "label": "Little tracking observed", "max": 100 }
+  ],
+  "tracker_categories": {
+    "advertising": { "label": "Advertising", "points_each": 4.0, "cap": 24 },
+    "fingerprinting": { "label": "Fingerprinting", "points_each": 6.0, "cap": 18 },
+    "social": { "label": "Social media", "points_each": 3.0, "cap": 9 },
+    "analytics": { "label": "Analytics", "points_each": 2.5, "cap": 12 },
+    "other": { "label": "Other", "points_each": 1.5, "cap": 6 },
+    "content": { "label": "Content (fonts, embeds, libraries)", "points_each": 0.3, "cap": 2 }
+  },
+  "known_fingerprinters": { "label": "Trackers on a fingerprinting list", "points_each": 4.0, "cap": 12 },
+  "cookies_third_party": { "label": "Cookies set by other sites", "points_each": 0.5, "cap": 4 },
+  "cookies_by_trackers": { "label": "Of those, cookies set by known trackers (extra weight)", "points_each": 1.0, "cap": 10 },
+  "third_party_requests": { "label": "Requests to other sites", "cap": 6, "scale": 100 },
+  "page_scripts": {
+    "canvas": { "label": "Canvas read-backs", "points_each": 1.5, "cap": 6 },
+    "webgl": { "label": "WebGL graphics-card queries", "points_each": 0.8, "cap": 3 },
+    "audio": { "label": "Offline audio renders", "points_each": 3.0, "cap": 6 },
+    "font": { "label": "Bursts of font measuring", "points_each": 2.0, "cap": 6 },
+    "geolocation": { "label": "Location requests", "points_each": 1.0, "cap": 3 }
+  }
+}
