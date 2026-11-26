@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-M3b%20Completed-2ea44f?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Status-M3c%20Completed-2ea44f?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Platform-Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" />
   <img src="https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/Database-SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
@@ -21,7 +21,7 @@
 
 **Invisible to Visible (PriviLens)** is a privacy-awareness project designed to make website visits and privacy-related activity more transparent through a browser extension, a local backend, and a dashboard.
 
-Modern websites interact with browsers through requests, cookies, scripts, and browser APIs. Some of these interactions are associated with tracking and fingerprinting techniques, yet much of this activity remains invisible to everyday users.
+Modern websites interact with browsers through network requests, cookies, scripts, and browser APIs. Some of these interactions are associated with tracking and fingerprinting techniques, yet much of this activity remains invisible to everyday users.
 
 Invisible to Visible aims to bring selected aspects of this activity into a simple, understandable, and user-controlled interface.
 
@@ -43,7 +43,7 @@ Invisible to Visible aims to bring selected aspects of this activity into a simp
 | M2c – In-page privacy signal collection | ✅ Completed |
 | M3a – Early-request attribution | ✅ Completed |
 | M3b – Backend store, migrations and retention | ✅ Completed |
-| M3c – Privacy Score and endpoints | 🚧 Planned / next |
+| M3c – Privacy Score and reporting endpoints | ✅ Completed |
 | M4 – Dashboard visualizations and filtering | 📋 Planned |
 | M5 – Threat and trust analysis | 📋 Planned |
 | M6 – Intelligence and recommendations | 📋 Planned |
@@ -53,9 +53,47 @@ Invisible to Visible aims to bring selected aspects of this activity into a simp
 </details>
 
 <details>
-<summary><strong>Latest milestone: M3b – Backend Store</strong></summary>
+<summary><strong>Latest milestone: M3c – Privacy Score and Reporting</strong></summary>
 
-M3b improves the backend storage model, migration safety, data retention, tracker storage, and consistency between browser-side and backend site identification.
+M3c introduces a transparent, evidence-based privacy scoring system and reporting capabilities. It builds on the stored visit and privacy signals established in M3b.
+
+**Implemented:**
+
+- Versioned privacy scoring configuration through `privacy_score.json`.
+- Per-visit Privacy Score on a scale of 0–100, where higher scores indicate better observed privacy.
+- Evidence-based scoring factors and explanations.
+- Diminishing returns and scoring caps to prevent excessive influence from repeated signals.
+- Explicit handling of unknown and unobserved tracking states.
+- Unscored visits when tracking could not be observed reliably.
+- Site-level score aggregation using the median of the latest 10 scored visits.
+- Site-level minimum and maximum score reporting.
+- Partial-visit counts and signal availability information.
+- Site, tracker, trend and export reporting endpoints.
+- Local-time reporting support through `offset_minutes`.
+- JSON data export.
+- Calibration tooling through `backend/tools/score_distribution.py`.
+
+**Milestone verification:**
+
+| Verification | Result |
+|---|---:|
+| Backend tests | **256 passed** |
+| Extension tests | **245 passed** |
+| Total automated tests | **501 passed** |
+| Existing visits used for calibration | **399** |
+| Scored visits | **272** |
+| Unscored visits | **127** |
+
+The scoring configuration was evaluated against the existing dataset. Calibration was completed without changing the initial scoring weights.
+
+M3c was merged into `main` and tagged `v0.3-m3c`.
+
+</details>
+
+<details>
+<summary><strong>Previous milestone: M3b – Backend Store</strong></summary>
+
+M3b improved the backend storage model, migration safety, data retention, tracker storage, and consistency between browser-side and backend site identification.
 
 **Implemented:**
 
@@ -102,13 +140,14 @@ flowchart LR
 3. **📡 Summarize:** The extension sends structured, summarized information.
 4. **🛡️ Validate:** The backend validates incoming data using the data contract.
 5. **🗄️ Store:** Visit information and derived data are stored locally.
-6. **📊 Visualize:** The dashboard presents available privacy information.
+6. **📊 Analyze:** The backend derives privacy indicators and calculates scores from available evidence.
+7. **📈 Visualize:** The dashboard presents available privacy information.
 
 ---
 
-## 🔎 Current Implementation – M0 to M3b
+## 🔎 Current Implementation – M0 to M3c
 
-The current implementation establishes a consent-based website monitoring and privacy signal collection flow, with backend storage improvements completed through M3b.
+The current implementation establishes a consent-based website monitoring and privacy signal collection flow, supported by structured backend storage, privacy scoring, and reporting capabilities.
 
 ### 🧩 Browser Monitoring
 
@@ -165,6 +204,44 @@ The extension observes API usage patterns without collecting actual geolocation 
 - Tracker-aware data deletion.
 - Public Suffix List support.
 
+### 📊 Privacy Scoring and Reports
+
+M3c introduces a configurable scoring layer that translates collected privacy evidence into understandable indicators.
+
+**Privacy Score:**
+
+- Per-visit score ranging from 0 to 100.
+- Higher scores represent better observed privacy.
+- Versioned scoring weights and configuration.
+- Evidence-based factors and explanatory information.
+- Diminishing returns and caps for repeated signals.
+- Unknown or unobserved tracking is not automatically treated as clean.
+- Visits without sufficient tracking observations remain unscored.
+
+**Site-level reporting:**
+
+- Median of the latest 10 scored visits.
+- Minimum and maximum observed scores.
+- Partial visit counts.
+- Distinct tracker and request information.
+- Local-time reporting support.
+
+**Reporting capabilities:**
+
+- Site reports.
+- Tracker reports.
+- Trend reports.
+- JSON export.
+- Configurable reporting windows.
+- Timezone offset support through `offset_minutes`.
+
+**Calibration:**
+
+- Score distribution analysis using the existing database.
+- Histogram-based score evaluation.
+- Scored and unscored visit analysis.
+- Calibration script: `backend/tools/score_distribution.py`.
+
 ### 📊 Dashboard
 
 - Recorded website visits.
@@ -174,6 +251,8 @@ The extension observes API usage patterns without collecting actual geolocation 
 - In-page privacy signals.
 - Visit-level signal availability.
 - Explanatory descriptions of observed activity.
+
+Dashboard visualizations and advanced filtering are planned for M4.
 
 ---
 
@@ -193,12 +272,15 @@ Invisible to Visible follows a data-minimization and user-consent approach.
 | ⏸️ User control | Supports pausing, resuming and withdrawing consent. |
 | 🗄️ Data ownership | Stores monitoring data locally in SQLite. |
 | 🧹 Retention | Supports configurable data retention. |
+| 📊 Evidence-based scoring | Scores are derived from available observations rather than assumed activity. |
 
 > ⚠️ **Privacy signal limitations**
 >
 > In-page observations are best-effort measurements. They do not prove that fingerprinting or malicious activity has occurred. A zero count does not guarantee that a website is free from tracking.
 >
 > Page-script counts originate from scripts running inside the page. A page can inflate, hide or evade these observations. They also cover only pages loaded after the observation script became active.
+>
+> Privacy scores are indicators based on the signals available to the system. They are not definitive security ratings or guarantees of a website's privacy practices. Visits with insufficient tracking observations are kept unscored rather than being treated as clean.
 
 ---
 
@@ -207,7 +289,7 @@ Invisible to Visible follows a data-minimization and user-consent approach.
 | Component | Technology | Purpose |
 |---|---|---|
 | 🧩 Browser Extension | JavaScript + Chrome Extension APIs | Consent, monitoring, signal collection and communication |
-| 🛡️ Backend | Python + FastAPI | API, validation, derivation, storage and migration |
+| 🛡️ Backend | Python + FastAPI | API, validation, scoring, reporting, derivation, storage and migration |
 | 🗄️ Database | SQLite | Local visit and tracker storage |
 | 📊 Dashboard | HTML, CSS and JavaScript | Privacy signal presentation |
 | 🧪 Backend Testing | pytest | Backend functionality and regression testing |
@@ -323,11 +405,11 @@ You can also test pausing, resuming, withdrawing consent, cookie collection, and
 
 ## 🧪 Testing
 
-Testing is an integral part of the development process.
+Testing is an integral part of the development process. The project uses automated backend and extension test suites to verify functionality, data handling, and regression safety.
 
 ### Automated Testing
 
-The current M3b milestone includes:
+The current implementation includes:
 
 - Backend API and data contract tests.
 - Signal derivation tests.
@@ -336,18 +418,34 @@ The current M3b milestone includes:
 - Retention tests.
 - Public Suffix List tests.
 - Tracker knowledge tests.
+- Privacy scoring tests.
+- Reporting endpoint tests.
+- Score distribution and calibration tests.
 - Extension background wiring tests.
 - In-page script and relay tests.
 - Page-session and early-event tests.
 - Cookie handling tests.
 
-### Latest Verified Results
+### Latest Verified Results – M3c
 
 | Test Suite | Result |
 |---|---:|
-| 🛡️ Backend | **190 passed** |
+| 🛡️ Backend | **256 passed** |
 | 🧩 Extension | **245 passed** |
-| 🎯 Total | **435 passed** |
+| 🎯 Total | **501 passed** |
+
+### Privacy Score Calibration
+
+The M3c calibration process evaluated the scoring configuration against the existing local dataset.
+
+| Calibration Metric | Result |
+|---|---:|
+| Total visits | 399 |
+| Scored visits | 272 |
+| Unscored visits | 127 |
+| Scored visits without page-script checks | 106 |
+
+Calibration included score distribution analysis, histogram evaluation, and review of scored versus unscored visits. The initial versioned scoring weights were retained after evaluation.
 
 ### Database Migration Verification
 
@@ -381,6 +479,7 @@ Invisible-to-Visible/
 ├── backend/
 │   ├── itv/
 │   │   ├── knowledge/
+│   │   │   └── privacy_score.json
 │   │   ├── api.py
 │   │   ├── config.py
 │   │   ├── db.py
@@ -390,11 +489,15 @@ Invisible-to-Visible/
 │   │   ├── migrations.py
 │   │   ├── models.py
 │   │   ├── psl.py
+│   │   ├── reports.py
 │   │   ├── retention.py
-│   │   └── store.py
+│   │   ├── scoring.py
+│   │   ├── store.py
+│   │   └── visits.py
 │   │
 │   ├── tests/
 │   ├── tools/
+│   │   └── score_distribution.py
 │   ├── requirements.txt
 │   └── requirements-dev.txt
 │
@@ -484,9 +587,13 @@ Invisible-to-Visible/
 
 - [x] M3a – Early-request attribution
 - [x] M3b – Backend store improvements and data retention
-- [ ] M3c – Develop and validate a transparent Privacy Score
-- [ ] Improve unknown-versus-clean signal reporting
-- [ ] Develop and validate privacy score endpoints
+- [x] M3c – Transparent, evidence-based Privacy Score
+- [x] Improve unknown-versus-clean signal reporting
+- [x] Develop and validate privacy score endpoints
+- [x] Site, tracker and trend reporting
+- [x] JSON export and timezone-aware reporting
+- [x] Score distribution calibration
+- [x] M3c merged into `main` and tagged `v0.3-m3c`
 
 ### 📊 M4 – Dashboard Visualizations and Filtering
 
@@ -532,5 +639,3 @@ The long-term goal is to develop a privacy-awareness and security intelligence p
 ## 💬 Feedback
 
 Feedback, suggestions and contributions are welcome!
-
-</details></details>
