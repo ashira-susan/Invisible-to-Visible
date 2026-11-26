@@ -136,6 +136,56 @@ Held events live in memory only. A service-worker restart in the middle of a nav
 
 **Not claimed.** The database file is not encrypted (D-20).
 
+## Privacy Score and reports (M3c)
+
+**The score.** A Privacy Score is 0 to 100 for one visit, **higher is better** (100 = little tracking observed). It is computed when read from the stored columns and tracker rows with the weights in `backend/itv/knowledge/privacy_score.json` (versioned: any change to a weight changes `version`), so a changed weight never leaves stale stored scores. The score is 100 minus a total penalty. Each factor grows with diminishing returns up to a cap, `penalty = cap * (1 - exp(-n * points_each / cap))`, so one more tracker, cookie, request or call never raises the score and never costs more than `points_each`. This is tested as a property.
+
+| Factor | Evidence | Why it counts, and how much |
+|---|---|---|
+| Known trackers, by category (advertising 4 points each, fingerprinting 6, social 3, analytics 2.5, other 1.5, content 0.3) | confirmed | Weighted by what the category is for; "content" (fonts, libraries, embeds) is near zero because it is mostly ordinary. |
+| Trackers on a fingerprinting list (4 each, cap 12) | confirmed | Stronger evidence, counted on top of the category. A listing is not proof of fingerprinting. |
+| Cookies set by other sites (0.5 each, cap 4) and, of those, by known trackers (1 more each, cap 10) | confirmed | Cookies by known trackers count twice, so moving one from "other" to "tracker" can only add points. |
+| Requests to other sites (cap 6, scale 100) | confirmed | Weak: most are ordinary images and scripts. |
+| Page-script calls: canvas 1.5, WebGL 0.8, offline audio 3, font bursts 2, location 1 (each capped) | best_effort | Low weights, because many normal sites use these, and a page can inflate, hide or evade the counts. |
+
+HTTPS is not part of this score (it belongs to the Trust Score, M5). The point values are judgement calls, calibrated on real pages: Wikipedia 100, a single ad tracker 96, BBC's front page about 48 (some tracking), a heavier BBC load about 39 (heavy tracking). `backend/tools/score_distribution.py` shows how the scores of your own stored visits are distributed, to check that nothing piles up at 0 or 100.
+
+**Unknown is never clean.** If `trackers_checked` is false there is **no score** (`score: null`, `status: "not_enough_evidence"`), never 100. If only `inpage_checked` is false, the page-script factors are **left out and listed under `not_checked`**, never counted as zero, and the result says the score could be lower. Only trackers on the known list are counted, so a high score is not proof of no tracking. These are repeated in the result's `notes`.
+
+**Bands** (display only; the same thresholds as the verdict bands, with their own names): 0 to 40 `heavy_tracking` "Heavy tracking observed", 41 to 70 `some_tracking`, 71 to 100 `little_tracking` "Little tracking observed". They are not the Trust Score's "Dangerous / Suspicious / Safe".
+
+**The result object** (`privacy` on `GET /api/v1/scans/{id}`, and in the export; `privacy_score` is its `score` on each list item):
+
+```json
+{
+  "version": "1", "status": "scored", "score": 48, "band": "some_tracking", "label": "Some tracking observed",
+  "total_points": 51.7,
+  "coverage": { "trackers": "checked", "page_scripts": "not_checked" },
+  "factors": [
+    { "id": "trackers.advertising", "label": "Advertising trackers", "evidence": "confirmed",
+      "observed": 11, "points": 20.8, "max_points": 24,
+      "explanation": "11 known advertising trackers were contacted." }
+  ],
+  "not_checked": [ { "id": "page_scripts", "reason": "The page scripts did not report for this visit (...)" } ],
+  "notes": [ "HTTPS is not part of this score.", "..." ]
+}
+```
+
+**A site's score** is the median (rounded half up) of its latest 10 visits that have a score, with their lowest and highest, so one odd visit does not define a site. Visits with no score are ignored for it (never counted as clean) but still counted as visits. `partial_visits` says how many of the scored visits had no page-script check.
+
+**Endpoints** (all need `X-Install-ID` and only ever return that install's data). Days are the user's local days: pass `offset_minutes`, the minutes ahead of UTC (JavaScript `-new Date().getTimezoneOffset()`, India is `330`, range -840 to 840), so the server needs no time-zone database.
+
+| Endpoint | What it returns |
+|---|---|
+| `GET /api/v1/sites?days=7&offset_minutes=0` | Per local day, per site: visits, checked visits, median score with its range and band, distinct trackers, third-party requests, last visit. |
+| `GET /api/v1/sites/{site}` | One site (its registrable domain): site score, counts, latest 10 visits, and every tracker seen on it with how many of its checked visits. 404 if there are no visits. |
+| `GET /api/v1/trackers?days=30&offset_minutes=0` | Who is tracking: per tracker domain, company, category, visits seen, sites seen, first and last seen, with the denominators `checked_visits` and `unchecked_visits`; plus a per-company roll-up. |
+| `GET /api/v1/trends?days=30&offset_minutes=0` | Per local day, oldest first, every day present: visits, checked and unchecked, median score and range, distinct trackers. |
+| `GET /api/v1/export` | A JSON download of everything stored for the install: the install record, every visit with its raw signals as received, the derived columns, its tracker rows and the computed score, oldest first. |
+| `GET /api/v1/scans`, `GET /api/v1/scans/{id}` | Unchanged, plus `privacy_score` on each item and `privacy` on the detail. |
+
+**Known limits.** A typed-address page that Chrome loads in the background (a prerender) may lose its earliest tracker requests; this was reasoned from the logs but not proven in Chrome, so such a visit may score better than it should (D-28). The point values are judgement calls, not measurements. Visits scored without a page-script check can score higher than they would with one.
+
 ## Never sent
 
 Full URLs, paths, query strings, fragments, page titles or content, cookie names or values, form entries, keystrokes, usernames or passwords in URLs.
@@ -167,3 +217,8 @@ Full URLs, paths, query strings, fragments, page titles or content, cookie names
 | D-21 | How is the database upgraded? | **Decided (M3b):** `PRAGMA user_version`, a verified safety copy, one transaction, idempotent, refuses a newer database. No third-party migration tool. |
 | D-22 | Do safety copies survive "delete all my data"? | **No (M3b).** They hold the same history, so `DELETE /api/v1/me` removes every `itv.db.bak-*` file in the data folder, including copies that contain other installs' data on the same computer (they are only safety copies; live data of other installs is untouched). |
 | D-23 | Where does tracker knowledge live? | **Decided (M3b):** in data files (`backend/itv/knowledge/*.json`), loaded and validated by `knowledge.py`. The legacy prototype knew only four products; those were ported without its risk ratings (unsupported judgements) and without its cookie-name table (cookie names never reach the backend, only hashes in the browser). Category weights for the Privacy Score live in a data file in M3c. |
+| D-24 | What is the Privacy Score? | **Decided (M3c):** per visit, 0 to 100, higher is better, computed on read from a versioned weights file, every point explained, each factor capped with diminishing returns so more tracking can never raise it. HTTPS is excluded. Bands share the verdict thresholds but not their names. |
+| D-25 | Unknown versus clean in the score | **Decided (M3c):** tracking not observed means `score: null`, never 100. Missing page-script check means those factors are excluded and listed as not checked, never zero. |
+| D-26 | What is a site's score? | **Decided (M3c):** the median of its latest 10 scored visits with their range; unscored visits are ignored for the score but counted as visits; partial visits are counted and disclosed. |
+| D-27 | How are days defined? | **Decided (M3c):** local days from an `offset_minutes` parameter (minutes ahead of UTC), no time-zone database. |
+| D-28 | Do typed-address (prerendered) pages lose early tracker requests? | **Open, not proven in Chrome:** such a visit may be undercounted and so score better than it should. To be measured in the M8 evaluation (typed address versus link, same page). |

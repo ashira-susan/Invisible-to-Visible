@@ -122,6 +122,37 @@ class ScanCreated(BaseModel):
     domain: str
 
 
+class PrivacyFactor(BaseModel):
+    id: str
+    label: str
+    evidence: str  # "confirmed" (live-detected) or "best_effort" (page-script counts)
+    observed: int
+    points: float
+    max_points: float
+    explanation: str
+
+
+class NotChecked(BaseModel):
+    id: str
+    reason: str
+
+
+class PrivacyResult(BaseModel):
+    """The Privacy Score of one visit (higher is better), with every point explained.
+    `score` is null, never 100, when tracking could not be observed."""
+
+    version: str
+    status: str  # "scored" or "not_enough_evidence"
+    score: int | None
+    band: str | None
+    label: str
+    total_points: float | None
+    coverage: dict[str, str]  # {"trackers": "checked"|"not_checked", "page_scripts": ...}
+    factors: list[PrivacyFactor]
+    not_checked: list[NotChecked]
+    notes: list[str]
+
+
 class ScanOut(BaseModel):
     id: int
     domain: str
@@ -131,11 +162,13 @@ class ScanOut(BaseModel):
     tracker_count: int = 0
     third_party_cookies: int = 0
     trackers_checked: bool = False
+    privacy_score: int | None = None  # null = tracking could not be observed, never 100
 
 
 class ScanDetail(ScanOut):
     referrer_origin: str | None = None
     signals: Signals
+    privacy: PrivacyResult | None = None
 
 
 class ScanList(BaseModel):

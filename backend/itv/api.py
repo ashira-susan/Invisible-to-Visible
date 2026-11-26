@@ -13,6 +13,7 @@ from .models import Install, Scan
 from .retention import maybe_purge
 from .store import add_scan_derived, delete_install_data, remove_migration_backups
 from .schemas import Deleted, ScanCreated, ScanDetail, ScanList, ScanOut, ScanSummary, Signals
+from . import visits as visit_loader
 
 router = APIRouter(prefix="/api/v1")
 
@@ -33,7 +34,7 @@ def install_id_header(
     return str(parsed)
 
 
-def _to_out(row: Scan) -> ScanOut:
+def _to_out(row: Scan, privacy_score: int | None = None) -> ScanOut:
     return ScanOut(
         id=row.id,
         domain=row.domain,
@@ -43,6 +44,7 @@ def _to_out(row: Scan) -> ScanOut:
         tracker_count=row.tracker_count,
         third_party_cookies=row.cookies_third_party,
         trackers_checked=row.trackers_checked,
+        privacy_score=privacy_score,
     )
 
 
@@ -87,13 +89,8 @@ def list_scans(
     install_id: str = Depends(install_id_header),
     db: Session = Depends(get_db),
 ):
-    rows = db.scalars(
-        select(Scan)
-        .where(Scan.install_id == install_id)
-        .order_by(Scan.observed_at.desc(), Scan.id.desc())
-        .limit(limit)
-    ).all()
-    return ScanList(scans=[_to_out(r) for r in rows])
+    loaded = visit_loader.load(db, install_id, limit=limit)
+    return ScanList(scans=[_to_out(v.scan, v.score) for v in loaded])
 
 
 @router.get("/scans/{scan_id}", response_model=ScanDetail)
@@ -106,10 +103,12 @@ def get_scan(
     # Someone else's scan looks exactly like a missing one.
     if row is None or row.install_id != install_id:
         raise HTTPException(status_code=404, detail="Scan not found.")
+    visit = visit_loader.load(db, install_id, ids=[scan_id])[0]
     return ScanDetail(
-        **_to_out(row).model_dump(),
+        **_to_out(row, visit.score).model_dump(),
         referrer_origin=row.referrer_origin,
         signals=Signals.model_validate(row.signals or {}),
+        privacy=visit.privacy,
     )
 
 
